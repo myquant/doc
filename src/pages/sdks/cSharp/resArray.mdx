@@ -1,0 +1,59 @@
+# 结果数组类
+
+## 1. GMDataList - 类定义
+
+**GMDataList**模板类是所有返回列表型数据函数的标准返回， 表示一个列表数据存储。类声明如下:
+
+```csharp
+public class GMDataList<T>
+{
+    public List<T> data;		   //数据
+    public int status;			 //状态码， 0表示成功， 其它表示错误码
+}
+```
+
+## 使用举例
+
+```csharp
+//查询一段tick行情
+GMDataList<Tick> dl = GMApi.HistoryTicks("SHSE.600000", "2018-07-16 09:30:00", "2018-07-16 10:30:00");
+
+if (dl.status == 0) //判断查询是否成功
+{
+	//遍历行情数组
+	foreach(var v in dl.data)
+	{
+		Console.WriteLine("{0} {1}", v.symbol, v.price);
+	}
+}
+```
+
+---
+
+## 2. GMData - 类定义
+
+**GMData** 模板类是所有返回类数据函数的标准返回， 表示一个对象数据。类声明如下:
+
+```csharp
+public class GMData<T>
+{
+    public T data;		   	  //数据
+    public int status;			 //状态码， 0表示成功， 其它表示错误码
+}
+```
+
+##使用举例
+
+```csharp
+//获取深交所最新的代码信息
+GMData<DataTable> ds = GMApi.GetInstruments(null, "SZSE");
+if(ds.status == 0)
+{
+	var dt = ds.data;
+    for (int i = 0; i < dt.Rows.Count; i++)
+    {
+    	Console.WriteLine("{0},{1},{2} ", dt.Rows[i]["symbol"], dt.Rows[i]["sec_level"], dt.Rows[i]["pre_close"]);
+    }
+}
+
+```

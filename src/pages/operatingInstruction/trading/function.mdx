@@ -1,0 +1,293 @@
+# 策略功能
+
+## 1. 策略监控
+
+用于监控策略实时成交明细，当前持仓等信息，也可查看分钟线、日线等交易图表：
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f2f810fb21ea.png)
+
+---
+
+## 2. 多账户监控
+
+多账户监控是针对一个策略关联多个账户时所使用的管理功能。通过该功能同时查看该策略下的多个账户的持仓信息。下面演示要使用这一功能的所涉及的完整步骤。
+
+**步骤**
+
+1、在“我的策略”中，选择要进行仿真交易的策略，然后点击右侧的“交易按钮；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f2feb87ea11c.png)
+
+2、在弹出页面中，选择要关联的几个账号并点击“确认”；
+
+> 一个策略要关联多个账户才能使用多账户监控功能。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f301e1f95094.png)
+
+3、此时，策略会被移入“量化交易”板块，点击框选部分的任意位置，随即进入交易页面。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f304c37783a6.png)
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f307ac6bd440.png)
+
+4、为便于演示最终效果，此处采用手工交易下单。我们分别在两个关联账户中下单。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f30a8bd48578.png)
+
+5、出现交易记录后，点击页面右侧竖向栏的“多账户监控”即可同时查看两个账户的持仓情况。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f30d620a67b1.png)
+
+---
+
+## 3. 查看仿真绩效分析
+
+与回测绩效报告相同，绩效展示了策略交易的明细情况，包括绩效分析，信号分析，交易明细，每日持仓和收益。
+
+**步骤**
+
+在“量化交易”板块，点击某一策略进入交易页面，选择右侧竖向栏的“绩效分析”，在弹出页面中点击“开始分析”，随即进入报告页面。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f352894113cc.png)
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f35544857af5.png)
+
+---
+
+## 4. 本地风控
+
+掘金风控系统提供合规流量控制和多种提醒机制。
+
+**入口**
+
+在仿真/实盘交易界面点击右侧风控图标进入风控管理页面，可对持仓、标的限制和合规风控进行设置和修改。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f35bdd14c836.png)
+
+**功能**
+
+- **开启/关闭风控**
+
+进入风控管理页面后，可通过图示的框选区域，选择开启或关闭风控。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f35edea6b7b9.png)
+
+- **风控设置**
+
+您可以通过勾选“风控设置”进行相关风控设置。
+
+其中包括：合规风控、指标限制、持仓限制、交易设置。
+
+布局上如下图所示，左侧为操作区，右侧为展示区。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f361c06bb5d8.png)
+
+---
+
+## 5. 下载交易数据
+
+掘金支持下载**日内交易数据**与**历史交易数据**，您可以根据自身需求勾选相应数据选项进行下载。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f36a3809db5a.png)
+
+**入口**
+
+在“量化交易”板块，点击某一策略进入交易页面，选择右侧竖向栏的最后一个图标——“交易数据下载”。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f36d39b4ad28.png)
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f36fed41ba6b.png)
+
+---
+
+## 6. 盯盘功能
+
+可以提供行情、动态参数和策略日志等多个窗口，可根据需求调整指标，还可以使用绘图工具进行绘图。
+
+![多窗口展示](https://www.myquant.cn/uploads/202104/attach_1675adecc55e3229.png)
+
+![绘图展示](https://www.myquant.cn/uploads/202104/attach_1675adfc0b12e1f1.png)
+
+---
+
+## 7. 动态参数
+
+动态参数仅在**仿真交易和实盘交易**下生效， 可在终端设置和修改。
+
+动态参数通过**策略调用接口**实现策略和掘金界面参数交互， 在不停止策略运行的情况下，界面修改参数（移开光标，修改就会生效）会对策略里的指定变量做修改。
+
+![动态参数](https://www.myquant.cn/uploads/202010/attach_16408fc9e3c9fed6.png)
+
+**入口**
+
+在“量化交易”板块，进入某一策略的交易页面，勾选“动态参数”。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f37b046cb609.png)
+
+**补充**
+
+- **add_parameter - 增加动态参数**
+
+  函数原型
+
+  ```python
+  add_parameter(key, value, min=0, max=0, name='', intro='', group='', readonly=False)
+  ```
+
+  参数
+
+  | 参数名   | 类型   | 说明           |
+  | :------- | :----- | :------------- |
+  | key      | str    | 参数的键       |
+  | value    | double | 参数的值       |
+  | min      | double | 最小值         |
+  | max      | double | 最大值         |
+  | name     | str    | 参数名称       |
+  | intro    | str    | 参数说明       |
+  | group    | str    | 参数的组       |
+  | readonly | bool   | 是否为只读参数 |
+
+  返回值
+
+  ```python
+  None
+  ```
+
+  示例
+
+  ```python
+  context.k_value = 80
+  add_parameter(key='k_value', value=context.k_value, min=0, max=100, name='k值阀值', intro='调整k值', group='1', readonly=False)
+  ```
+
+- **set_parameter - 修改已经添加过的动态参数**
+
+  > 注意，需要保持 key 键名和添加过的动态参数的 key 一致，否则不生效，无报错
+
+  函数原型
+
+  ```python
+  set_parameter(key, value, min=0, max=0, name='', intro='', group='', readonly=False)
+  ```
+
+  参数
+
+  | 参数名   | 类型   | 说明           |
+  | :------- | :----- | :------------- |
+  | key      | str    | 参数的键       |
+  | value    | double | 参数的值       |
+  | min      | double | 最小值         |
+  | max      | double | 最大值         |
+  | name     | str    | 参数名称       |
+  | intro    | str    | 参数说明       |
+  | group    | str    | 参数的组       |
+  | readonly | bool   | 是否为只读参数 |
+
+  返回值
+
+  ```python
+  None
+  ```
+
+  示例
+
+  ```python
+  context.k_xl = 0.3
+  set_parameter(key='k_value', value=context.k_xl, min=0, max=1, name='k值斜率', intro='调整k值斜率', group='1', readonly=False)
+  ```
+
+- **on_parameter - 动态参数修改事件推送**
+
+  函数原型
+
+  ```python
+  def on_parameter(context, parameter):
+      print(parameter)
+  ```
+
+  参数
+
+  | 参数名    | 类型                                                                                   | 说明                     |
+  | :-------- | :------------------------------------------------------------------------------------- | :----------------------- |
+  | context   | [context](https://www.myquant.cn/docs/python/python_concept.html#context---上下文对象) | 上下文                   |
+  | parameter | dict                                                                                   | 当前被推送的动态参数对象 |
+
+  示例
+
+  ```python
+  def on_parameter(context, parameter):
+      print(parameter)
+  ```
+
+  输出
+
+  ```python
+  {'key': 'k_value', 'value': 80.0, 'max': 100.0, 'name': 'k值阀值', 'intro': '调整k值', 'group': '1', 'min': 0.0, 'readonly': False}
+  ```
+
+- **context.parameters - 获取所有动态参数**
+
+  返回数据类型为字典, key 为动态参数的 key, 值为动态参数对象
+
+  示例
+
+  ```python
+  print(context.parameters)
+  ```
+
+  输出
+
+  ```python
+  {'k_value': {'key': 'k_value', 'value': 80.0, 'max': 100.0, 'name': 'k值阀值', 'intro': 'k值阀值', 'group': '1', 'min': 0.0, 'readonly': False}, 'd_value': {'key': 'd_value', 'value': 20.0, 'max': 100.0, 'name': 'd值阀值', 'intro': 'd值阀值', 'group': '1', 'min': 0.0, 'readonly': False}}
+  ```
+
+---
+
+## 8. 策略日志
+
+策略日志仅在**实时模式**下生效，通过**策略调用接口**实现策略和掘金界面参数交互，提供一个界面展示用户策略内部的日志。
+
+**入口**
+
+在“量化交易”板块，进入某一策略的交易页面，勾选“策略日志”。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f382ba7d19a8.png)
+
+**补充**
+
+log - 日志函数
+
+函数原型
+
+```python
+log(level, msg, source)
+```
+
+参数
+
+| 参数名 | 类型 | 说明                                         |
+| :----- | :--- | :------------------------------------------- |
+| level  | str  | 日志级别 `debug`, `info`, `warning`, `error` |
+| msg    | str  | 信息                                         |
+| source | str  | 来源                                         |
+
+返回值
+
+```python
+None
+```
+
+示例
+
+```python
+log(level='info', msg='平安银行信号触发', source='strategy')
+```
+
+说明
+
+- log 函数仅支持实时模式，输出到终端策略日志处。
+- level 输入无效参数不会报错，终端日志无显示。
+- 参数类型报 NameError 错误,缺少参数报 TypeError 错误。
+- 重启终端日志记录会自动清除，需要记录日志到本地的，可以使用 Python 的 logging 库。
+
+---

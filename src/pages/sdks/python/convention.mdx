@@ -1,0 +1,326 @@
+# 变量约定
+
+## symbol - 代码标识
+
+掘金代码(**symbol**)是掘金平台用于唯一标识交易标的代码,
+
+格式为：**交易所代码.交易标代码**, 比如深圳平安的**symbol**，示例：`SZSE.000001`（注意区分大小写）。代码表示可以在掘金终端的仿真交易或交易工具中进行查询。
+
+![](http://www.myquant.cn/uploads/202010/attach_163e07077adc2677.png)
+
+#### 交易所代码
+
+目前掘金支持国内的 7 个交易所, 各交易所的代码缩写如下：
+
+| 市场中文名           | 市场代码 |
+| :------------------- | :------- |
+| 上交所               | SHSE     |
+| 深交所               | SZSE     |
+| 中金所               | CFFEX    |
+| 上期所               | SHFE     |
+| 大商所               | DCE      |
+| 郑商所               | CZCE     |
+| 上海国际能源交易中心 | INE      |
+
+#### 交易标的代码
+
+交易表代码是指交易所给出的交易标的代码, 包括股票（如 600000）, 期货（如 rb2011）, 期权(如 10002498）, 指数（如 000001）, 基金（如 510300）等代码。
+
+具体的代码请参考交易所的给出的证券代码定义。
+
+#### symbol 示例
+
+| 市场中文名           | 市场代码 | 示例代码     | 证券简称                            |
+| :------------------- | :------- | :----------- | :---------------------------------- |
+| 上交所               | SHSE     | SHSE.600000  | 浦发银行                            |
+| 深交所               | SZSE     | SZSE.000001  | 平安银行                            |
+| 中金所               | CFFEX    | CFFEX.IC2011 | 中证 500 指数 2020 年 11 月期货合约 |
+| 上期所               | SHFE     | SHFE.rb2011  | 螺纹钢 2020 年 11 月期货合约        |
+| 大商所               | DCE      | DCE.m2011    | 豆粕 2020 年 11 月期货合约          |
+| 郑商所               | CZCE     | CZCE.FG101   | 玻璃 2021 年 1 月期货合约           |
+| 上海国际能源交易中心 | INE      | INE.sc2011   | 原油 2020 年 11 月期货合约          |
+
+#### 期货主力连续合约
+
+仅回测模式下使用，`期货主力连续合约`为量价数据的简单拼接，未做平滑处理， 如 SHFE.RB 螺纹钢主力连续合约，其他主力合约请查看[期货主力连续合约](../l3333/920.html#主力连续合约完整的合约代码)
+
+## mode - 模式选择
+
+策略支持两种运行模式,需要在`run()`里面指定，分别为实时模式和回测模式。
+
+### 实时模式
+
+实时模式需指定 **mode = MODE_LIVE**
+
+订阅行情服务器推送的实时行情，也就是交易所的实时行情，只在交易时段提供，常用于仿真和实盘。
+
+### 回测模式
+
+回测模式需指定 **mode = MODE_BACKTEST**
+
+订阅指定时段、指定交易代码、指定数据类型的历史行情，行情服务器将按指定条件全速回放对应的行情数据。适用的场景是策略回测阶段，快速验证策略的绩效是否符合预期。
+
+## context - 上下文对象
+
+context 是策略运行上下文环境对象，该对象将会在你的算法策略的任何方法之间做传递。用户可以通过 context 定义多种自己需要的属性，也可以查看 context 固有属性，context 结构如下图：
+
+![](http://www.myquant.cn/uploads/202010/attach_163e0724ee0db372.png)
+
+### context.symbols - 订阅代码集合
+
+通过 subscribe 行情订阅函数， 订阅代码会生成一个代码集合
+
+**函数原型：**
+
+```
+context.symbols
+```
+
+**返回值：**
+
+| 类型     | 说明         |
+| :------- | :----------- |
+| set(str) | 订阅代码集合 |
+
+**示例：**
+
+```
+subscribe(symbols=['SHSE.600519', 'SHSE.600419'], frequency='60s')
+context.symbols
+```
+
+**返回：**
+
+```
+{'SHSE.600519', 'SHSE.600419'}
+```
+
+### context.now - 当前时间
+
+实时模式返回当前本地时间, 回测模式返回当前回测时间
+
+**函数原型：**
+
+```
+context.now
+```
+
+**返回值：**
+
+| 类型              | 说明                                                                          |
+| :---------------- | :---------------------------------------------------------------------------- |
+| datetime.datetime | 当前时间(回测模式下是策略回测的当前历史时间， 实时模式下是用户的系统本地时间) |
+
+**示例：**
+
+```
+context.now
+```
+
+**返回：**
+
+```
+2020-09-01 09:40:00+08:00
+```
+
+### context.data - 数据滑窗
+
+获取订阅的[bar](python_object_data.md#Bar - Bar 对象 "Bar - Bar 对象")或[tick](python_object_data.md#Tick - Tick 对象 "Tick - Tick 对象")滑窗，数据为包含当前时刻推送 bar 或 tick 的前 count 条`bar`或者`tick`数据
+
+**原型：**
+
+```
+context.data(symbol,frequency,count,fields)
+```
+
+**参数：**
+
+| 参数名    | 类型 | 说明                                                                                                                                                                                                                                          |
+| :-------- | :--- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| symbol    | str  | 标的代码(只允许单个标的的代码字符串)                                                                                                                                                                                                          |
+| frequency | str  | 频率，所填频率应包含在[subscribe](python_subscribe.md '数据订阅')订阅过频率中。                                                                                                                                                               |
+| count     | int  | 滑窗大小，正整数，此处 count 值应小于等于 subscribe 中指定的 count 值                                                                                                                                                                         |
+| fields    | str  | 所需 bar 或 tick 的字段,如有多属性, 中间用`,`隔开,具体字段见:[股票字段](https://www.myquant.cn/docs/python/python_object_data.html#29852bf1b0fd29bb) ,[期货字段](https://www.myquant.cn/docs/python/python_object_data.html#29852bf1b0fd29bb) |
+
+**返回值：**
+
+| 类型      | 说明                                    |
+| :-------- | :-------------------------------------- |
+| dataframe | tick 的 dataframe 或者 bar 的 dataframe |
+
+订阅 tick 时
+**示例：**
+
+```python
+Subcribe_data = context.data(symbol='SHSE.600000', frequency='tick', count=2)
+```
+
+**输出：**
+
+```
+[{'symbol': 'SHSE.600000', 'open': 9.680000305175781, 'high': 9.720000267028809, 'low': 9.619999885559082, 'price': 9.630000114440918, 'quotes': [{'bid_p': 9.630000114440918, 'bid_v': 360197, 'ask_p': 9.640000343322754, 'ask_v': 124200}, {'bid_p': 9.619999885559082, 'bid_v': 1265300, 'ask_p': 9.649999618530273, 'ask_v': 172859}, {'bid_p': 9.609999656677246, 'bid_v': 1030400, 'ask_p': 9.65999984741211, 'ask_v': 233400}, {'bid_p': 9.600000381469727, 'bid_v': 1200000, 'ask_p': 9.670000076293945, 'ask_v': 150700}, {'bid_p': 9.59000015258789, 'bid_v': 208000, 'ask_p': 9.680000305175781, 'ask_v': 199543}], 'cum_volume': 29079145, 'cum_amount': 280888066.0, 'last_amount': 963.0, 'last_volume': 100, 'created_at': datetime.datetime(2020, 11, 20, 11, 30, 1, 400000, tzinfo=tzfile('PRC')), 'cum_position': 0, 'trade_type': 0}, {'quotes': [{'bid_p': 9.630000114440918, 'bid_v': 315497, 'ask_p': 9.640000343322754, 'ask_v': 125900}, {'bid_p': 9.619999885559082, 'bid_v': 1291300, 'ask_p': 9.649999618530273, 'ask_v': 177959}, {'bid_p': 9.609999656677246, 'bid_v': 1035000, 'ask_p': 9.65999984741211, 'ask_v': 233400}, {'bid_p': 9.600000381469727, 'bid_v': 1213300, 'ask_p': 9.670000076293945, 'ask_v': 150700}, {'bid_p': 9.59000015258789, 'bid_v': 212100, 'ask_p': 9.680000305175781, 'ask_v': 173943}, {'bid_p': 0, 'bid_v': 0, 'ask_p': 0, 'ask_v': 0}, {'bid_p': 0, 'bid_v': 0, 'ask_p': 0, 'ask_v': 0}, {'bid_p': 0, 'bid_v': 0, 'ask_p': 0, 'ask_v': 0}, {'bid_p': 0, 'bid_v': 0, 'ask_p': 0, 'ask_v': 0}, {'bid_p': 0, 'bid_v': 0, 'ask_p': 0, 'ask_v': 0}], 'symbol': 'SHSE.600000', 'created_at': datetime.datetime(2020, 11, 20, 13, 0, 2, 430000, tzinfo=tzfile('PRC')), 'price': 9.630000114440918, 'open': 9.680000305175781, 'high': 9.720000267028809, 'low': 9.619999885559082, 'cum_volume': 29171845, 'cum_amount': 281780897.0, 'cum_position': 0, 'last_amount': 892831.0, 'last_volume': 92700, 'trade_type': 0, 'receive_local_time': 1605863292.163}]
+```
+
+订阅 bar 时
+**示例：**
+
+```python
+Subcribe_data = context.data(symbol='SHSE.600000', frequency='60s', count=2, fields='symbol,open,close,volume,eob')
+```
+
+**输出：**
+
+```
+  symbol         open         close        volume         eob
+SHSE.600000    12.64000     12.65000      711900   2017-06-30 15:00:00
+SHSE.600000    12.64000     12.62000      241000   2017-07-03 09:31:00
+```
+
+**注意：**
+
+**1.**所得数据按 eob 时间正序排列。
+**2.**不支持传入多个 symbol 或 frequency,若输入多个,则返回空 dataframe。
+**3.**若 fields 查询字段包含无效字段，返回 KeyError 错误。
+
+**Tips：context.data()与 bar 一起使用时的区别和联系**
+
+以订阅‘SHSE.600519’股票日频数据为例，在 on_bar()中同时输出 bar 和 context.data()。
+
+- 当订阅的滑窗大小（count）为 1 时，bar 返回的数据和 context.data 返回的数据是相同的
+- 当订阅的滑窗大小（count）大于 1 时，bar 返回的数据为最新的一条；而 context.data()返回的数据是 count 条，其中最后一条和 bar 返回的数据相同
+  也就是说，无论订阅滑窗大小如何设置，bar 每次只返回一条最新数据，而 context.data()返回数据条数等于 count，并且最后一条为最新数据。
+
+### context.account - 账户信息
+
+可通过此函数获取账户资金信息及持仓信息。
+
+**原型：**
+
+```
+context.account(account_id=None)
+```
+
+**参数：**
+
+| 参数名     | 类型 | 说明                                                    |
+| :--------- | :--- | :------------------------------------------------------ |
+| account_id | str  | 账户信息，默认返回默认账户, 如多个账户需指定 account_id |
+
+**返回值：**
+
+返回类型为[account - 账户对象](python_object_trade.md#Account - 账户对象 "account - 账户对象")。
+
+_示例-获取当前持仓：_
+
+```python
+# 所有持仓
+Account_positions = context.account().positions()
+# 指定持仓
+Account_position = context.account().position(symbol='SHSE.600519',side = PositionSide_Long)
+```
+
+**返回值：**
+
+| 类型           | 说明                                                                             |
+| :------------- | :------------------------------------------------------------------------------- |
+| list[position] | [持仓对象](python_object_trade.md#Position - 持仓对象 "Position - 持仓对象")列表 |
+
+** 注意： **
+没有持仓的情况下， 用 context.account().positions()查总持仓， 返回空列表， 用 context.account().position()查单个持仓，返回 None
+
+**输出**
+
+```
+# 所有持仓输出
+[{'account_id': 'd7443a53-f65b-11ea-bb9d-484d7eaefe55', 'symbol': 'SHSE.600419', 'side': 1, 'volume': 2200, 'volume_today': 100, 'vwap': 16.43391600830338, 'amount': 36154.61521826744, 'fpnl': -2362.6138754940007, 'cost': 36154.61521826744, 'available': 2200, 'available_today': 100, 'created_at': datetime.datetime(2020, 9, 1, 9, 40, tzinfo=tzfile('PRC')), 'updated_at': datetime.datetime(2020, 9, 30, 9, 40, tzinfo=tzfile('PRC')), 'account_name': '', 'vwap_diluted': 0.0, 'price': 0.0, 'order_frozen': 0, 'order_frozen_today': 0, 'available_now': 0, 'market_value': 0.0, 'last_price': 0.0, 'last_volume': 0, 'last_inout': 0, 'change_reason': 0, 'change_event_id': '', 'has_dividend': 0}, {'account_id': 'd7443a53-f65b-11ea-bb9d-484d7eaefe55', 'symbol': 'SHSE.600519', 'side': 1, 'volume': 1100, 'vwap': 1752.575242219682, 'amount': 1927832.7664416502, 'fpnl': -110302.84700805641, 'cost': 1927832.7664416502, 'available': 1100, 'created_at': datetime.datetime(2020, 9, 1, 9, 40, tzinfo=tzfile('PRC')), 'updated_at': datetime.datetime(2020, 9, 15, 9, 40, tzinfo=tzfile('PRC')), 'account_name': '', 'volume_today': 0, 'vwap_diluted': 0.0, 'price': 0.0, 'order_frozen': 0, 'order_frozen_today': 0, 'available_today': 0, 'available_now': 0, 'market_value': 0.0, 'last_price': 0.0, 'last_volume': 0, 'last_inout': 0, 'change_reason': 0, 'change_event_id': '', 'has_dividend': 0}]
+# 指定持仓输出
+{'account_id': 'd7443a53-f65b-11ea-bb9d-484d7eaefe55', 'symbol': 'SHSE.600519', 'side': 1, 'volume': 1100, 'vwap': 1752.575242219682, 'amount': 1927832.7664416502, 'fpnl': -110302.84700805641, 'cost': 1927832.7664416502, 'available': 1100, 'created_at': datetime.datetime(2020, 9, 1, 9, 40, tzinfo=tzfile('PRC')), 'updated_at': datetime.datetime(2020, 9, 15, 9, 40, tzinfo=tzfile('PRC')), 'account_name': '', 'volume_today': 0, 'vwap_diluted': 0.0, 'price': 0.0, 'order_frozen': 0, 'order_frozen_today': 0, 'available_today': 0, 'available_now': 0, 'market_value': 0.0, 'last_price': 0.0, 'last_volume': 0, 'last_inout': 0, 'change_reason': 0, 'change_event_id': '', 'has_dividend': 0}
+```
+
+_示例-获取当前账户资金：_
+
+```python
+context.account().cash
+```
+
+**返回值：**
+
+| 类型       | 说明                                                                     |
+| :--------- | :----------------------------------------------------------------------- |
+| dict[cash] | [资金对象](python_object_trade.md#Cash - 资金对象 "Cash - 资金对象")字典 |
+
+**输出**
+
+```
+{'account_id': 'd7443a53-f65b-11ea-bb9d-484d7eaefe55', 'nav': 1905248.2789094353, 'pnl': -94751.72109056474, 'fpnl': -94555.35135529494, 'frozen': 1963697.3526980684, 'available': 36106.277566661825, 'cum_inout': 2000000.0, 'cum_trade': 1963697.3526980684, 'cum_commission': 196.3697352698069, 'last_trade': 1536.1536610412597, 'last_commission': 0.153615366104126, 'created_at': datetime.datetime(2020, 9, 1, 8, 0, tzinfo=tzfile('PRC')), 'updated_at': datetime.datetime(2020, 9, 30, 9, 40, tzinfo=tzfile('PRC')), 'account_name': '', 'currency': 0, 'order_frozen': 0.0, 'balance': 0.0, 'market_value': 0.0, 'cum_pnl': 0.0, 'last_pnl': 0.0, 'last_inout': 0.0, 'change_reason': 0, 'change_event_id': ''}
+```
+
+_示例-获取账户连接状态：_
+
+```python
+context.account().status
+```
+
+**输出**
+
+```
+state: 3
+```
+
+### context.parameters - 动态参数
+
+获取所有动态参数
+
+**函数原型：**
+
+```
+context.parameters
+```
+
+**返回值：**
+
+| 类型 | 说明                                                                                            |
+| :--- | :---------------------------------------------------------------------------------------------- |
+| dict | key 为动态参数的 key, 值为动态参数对象， 参见[动态参数设置](python_parameter.md '动态参数设置') |
+
+_示例-添加动态参数和查询所有设置的动态参数_
+
+```python
+add_parameter(key='k_value', value=context.k_value, min=0, max=100, name='k值阀值', intro='k值阀值',group='1', readonly=False)
+
+context.parameters
+```
+
+**输出**
+
+```
+{'k_value': {'key': 'k_value', 'value': 80.0, 'max': 100.0, 'name': 'k值阀值', 'intro': 'k值阀值', 'group': '1', 'min': 0.0, 'readonly': False}}
+
+```
+
+### context.xxxxx - 自定义属性
+
+通过自定义属性设置参数， 随 context 全局变量传入策略各个事件里
+
+```
+context.my_value = 100000000
+```
+
+**返回值：**
+
+| 类型     | 说明       |
+| :------- | :--------- |
+| any type | 自定义属性 |
+
+_示例-输出自定义属性_
+
+```python
+print(context.my_value)
+```
+
+**输出**
+
+```
+100000000
+
+```
