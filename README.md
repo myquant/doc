@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# doc
-=======
 首先安装 npm 依赖项:
 
 ```bash
@@ -13,4 +10,3 @@ Next, 运行开发服务器：
 ```bash
 npm run dev
 ```
->>>>>>> master
