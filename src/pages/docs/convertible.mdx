@@ -1,0 +1,284 @@
+# 可转债
+
+## 1. 基础数据
+
+目前，掘金量化支持上交所和深交所的交易标的查询。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+
+
+##### **Python 数据接口**
+
+1. [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E5%AF%B9%E5%BA%94%E7%9A%84%E6%95%B0%E6%8D%AE-,getinstrumentinfos%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF,-%E8%8E%B7%E5%8F%96%E5%88%B0%E4%BA%A4%E6%98%93)，由此获取的信息与时间无关
+2. [get_instruments - 查询最新交易标的信息](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E7%9B%B4%E6%8E%A5%E6%8A%A5%E9%94%99-,getinstruments%20%2D%20%E6%9F%A5%E8%AF%A2%E6%9C%80%E6%96%B0%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E4%BF%A1%E6%81%AF,-%E6%9F%A5%E8%AF%A2%E6%9C%80%E6%96%B0%E4%BA%A4%E6%98%93)，可获取基本数据及最新日频数据
+3. [get_history_instruments - 查询交易标的历史信息数据](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E8%BD%AC%E8%82%A1%E4%BB%B7%EF%BC%89*%E8%82%A1%E4%BB%B7-,gethistoryinstruments%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E5%8E%86%E5%8F%B2%E4%BF%A1%E6%81%AF%E6%95%B0%E6%8D%AE,-%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9Asymbols)，可返回指定 symbols 的标的日频历史数据
+4. [get_trading_dates - 查询交易日列表](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,gettradingdates%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，可查询从 2005-01-01 以来的交易日历
+5. [get_previous_trading_date - 查询指定日期的上一交易日](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,getprevioustradingdate%20%2D%20%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9A%E6%97%A5%E6%9C%9F%E7%9A%84%E4%B8%8A%E4%B8%80%E4%B8%AA%E4%BA%A4%E6%98%93%E6%97%A5,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，返回指定日期的上一个交易日字符串(%Y-%m-%d 格式)
+6. [get_next_trading_date - 查询指定日期的下一个交易日](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,getnexttradingdate%20%2D%20%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9A%E6%97%A5%E6%9C%9F%E7%9A%84%E4%B8%8B%E4%B8%80%E4%B8%AA%E4%BA%A4%E6%98%93%E6%97%A5,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，返回指定日期的下一个交易日字符串 (%Y-%m-%d 格式)
+
+**示例 1**
+
+获取“SHSE.113527”的基本信息：
+
+```python
+get_instrumentinfos(symbols='SHSE.113527', df=False)
+```
+
+返回结果：
+
+```python
+[{'conversion_price': 9.85, 'sec_type': 8, 'sec_abbr': 'wgzz', 'exchange': 'SHSE', 'conversion_start_date': datetime.datetime(2019, 7, 30, 0, 0, tzinfo=tzfile('PRC')), 'price_tick': 0.01, 'sec_name': '维格转债', 'symbol': 'SHSE.113527', 'trade_n': 0, 'underlying_symbol': 'SHSE.603518', 'listed_date': datetime.datetime(2019, 2, 19, 0, 0, tzinfo=tzfile('PRC')), 'delisted_date': datetime.datetime(2025, 1, 24, 0, 0, tzinfo=tzfile('PRC')), 'sec_id': '113527'}]
+```
+
+**示例 2**
+
+获取“SHSE.113527”的基本数据及最新日频数据：
+
+```python
+get_instruments(symbols='SHSE.113527', df=False)
+```
+
+返回结果：
+
+```python
+[{'adj_factor': 0.0, 'settle_price': 0.0, 'lower_limit': 0.0, 'position': 0, 'upper_limit': 0.0, 'is_suspended': 0, 'sec_level': 1, 'pre_close': 163.64999389648438, 'multiplier': 1.0, 'symbol': 'SHSE.113527', 'margin_ratio': 1.0, 'trade_date': datetime.datetime(2021, 11, 25, 0, 0, tzinfo=tzfile('PRC')), 'delisted_date': datetime.datetime(2025, 1, 24, 0, 0, tzinfo=tzfile('PRC')), 'sec_type': 8, 'trade_n': 0, 'price_tick': 0.01, 'conversion_start_date': datetime.datetime(2019, 7, 30, 0, 0, tzinfo=tzfile('PRC')), 'listed_date': datetime.datetime(2019, 2, 19, 0, 0, tzinfo=tzfile('PRC')), 'exchange': 'SHSE', 'sec_id': '113527', 'sec_abbr': 'wgzz', 'underlying_symbol': 'SHSE.603518', 'sec_name': '维格转债', 'conversion_price': 9.85}]
+```
+
+**示例 3**
+
+获取“SHSE.113527”在 2021-03-01 -- 2021-3-3 的历史信息数据：
+
+```python
+get_history_instruments(symbols='SHSE.113527', start_date='2021-03-01', end_date='2021-03-03', df=False)
+```
+
+返回结果：
+
+```python
+[{'symbol': 'SHSE.113527', 'sec_level': 1, 'multiplier': 1.0, 'margin_ratio': 1.0, 'pre_close': 80.16000366210938, 'is_suspended': 0, 'settle_price': 0.0, 'position': 0, 'pre_settle': 0.0, 'upper_limit': 0.0, 'lower_limit': 0.0, 'adj_factor': 0.0, 'strike_price': 0.0, 'trade_date': datetime.datetime(2021, 3, 1, 0, 0, tzinfo=tzfile('PRC'))}, {'symbol': 'SHSE.113527', 'sec_level': 1, 'multiplier': 1.0, 'margin_ratio': 1.0, 'pre_close': 80.5199966430664, 'is_suspended': 0, 'settle_price': 0.0, 'position': 0, 'pre_settle': 0.0, 'upper_limit': 0.0, 'lower_limit': 0.0, 'adj_factor': 0.0, 'strike_price': 0.0, 'trade_date': datetime.datetime(2021, 3, 2, 0, 0, tzinfo=tzfile('PRC'))}, {'symbol': 'SHSE.113527', 'sec_level': 1, 'multiplier': 1.0, 'margin_ratio': 1.0, 'pre_close': 80.19999694824219, 'is_suspended': 0, 'settle_price': 0.0, 'position': 0, 'pre_settle': 0.0, 'upper_limit': 0.0, 'lower_limit': 0.0, 'adj_factor': 0.0, 'strike_price': 0.0, 'trade_date': datetime.datetime(2021, 3, 3, 0, 0, tzinfo=tzfile('PRC'))}]
+```
+
+**示例 4**
+
+查询上交所 2021-01-01 -- 2021-01-30 的交易日：
+
+```python
+get_trading_dates(exchange='SHSE', start_date='2021-01-01', end_date='2021-01-30')
+```
+
+返回结果：
+
+```python
+['2021-01-04', '2021-01-05', '2021-01-06', '2021-01-07', '2021-01-08', '2021-01-11', '2021-01-12', '2021-01-13', '2021-01-14', '2021-01-15', '2021-01-18', '2021-01-19', '2021-01-20', '2021-01-21', '2021-01-22', '2021-01-25', '2021-01-26', '2021-01-27', '2021-01-28', '2021-01-29']
+```
+
+**示例 5**
+
+查询上交所所 2021-12-01 的上个交易日的时间：
+
+```python
+get_previous_trading_date(exchange='SHSE', date='2021-12-01')
+```
+
+返回结果：
+
+```python
+'2021-11-30'
+```
+
+**示例 6**
+
+查询上交所 2021-11-01 的下个交易日的时间：
+
+```python
+get_next_trading_date(exchange='SHSE', date='2021-11-01')
+```
+
+返回结果：
+
+```python
+'2021-11-02'
+```
+
+
+
+##### **其他语言数据接口**
+
+**C#**
+
+- [GetInstrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#9fd433e7783cb875)
+- [GetInstruments - 查询最新交易标的信息](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#eb60bf5c2d2e951c)
+- [GetHistoryInstruments - 查询交易标的历史数据](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#c739633b97ce8f68)
+- [GetTradingDates - 查询交易日历](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#ef110c18af83a72a)
+- [GetPreviousTradingDate - 返回指定日期的上一个交易日](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#1c954f23e350bfc1)
+- [GetNextTradingDate - 返回指定日期的下一个交易日](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#37e4b11f820f5632)
+
+**C++**
+
+- [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/cpp/global-func.md#6bc9d974f0f1a1b6)
+- [get_instruments - 查询最新交易标的信息](https://www.myquant.cn/docs/cpp/global-func.md#8ba2064987fb1d1f)
+- [get_history_instruments - 查询交易标的历史数据](https://www.myquant.cn/docs/cpp/global-func.md#8f28e1de81b80633)
+- [get_trading_dates - 查询交易日历](https://www.myquant.cn/docs/cpp/global-func.md#bc2ed330883fa3ca)
+- [get_previous_trading_date - 返回指定日期的上一个交易日](https://www.myquant.cn/docs/cpp/global-func.md#9554e0c0d93dae12)
+- [get_next_trading_date - 返回指定日期的下一个交易日](https://www.myquant.cn/docs/cpp/global-func.md#38acd02099e505c9)
+
+**MATLAB**
+
+- [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/matlab/305.html#6bc9d974f0f1a1b6)
+- [get_instruments - 查询最新交易标的最新基本信息](https://www.myquant.cn/docs/matlab/305.html#4abb5e188912e1e4)
+- [get_history_instruments - 查询交易标的历史基本信息](https://www.myquant.cn/docs/matlab/305.html#958bc6fcdaecf611)
+- [get_trading_dates - 查询交易日历表](https://www.myquant.cn/docs/matlab/305.html#4ad239836cf8934a)
+- [get_previous_trading_date - 查询上一个交易日](https://www.myquant.cn/docs/matlab/305.html#0f4f28fe6c40386f)
+- [get_next_trading_date - 查询下一个交易日](https://www.myquant.cn/docs/matlab/305.html#752bcf0eec43fc1e)
+
+---
+
+## 2. 行情数据
+
+### 实时行情数据
+
+掘金量化目前支持获取国内两个市场的股票实时行情数据。
+
+包含 Tick 行情和 Bar 行情。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+
+
+##### **Tick - Tick 行情**
+
+逐笔交易行情, 包含以下内容：
+
+| 参数名       | 类型              | 说明                                                                                            |
+| :----------- | :---------------- | :---------------------------------------------------------------------------------------------- |
+| symbol       | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol)                      |
+| open         | float             | 开盘价                                                                                          |
+| high         | float             | 最高价                                                                                          |
+| low          | float             | 最低价                                                                                          |
+| price        | float             | 最新价                                                                                          |
+| cum_volume   | int               | 成交总量/最新成交量,累计值                                                                      |
+| cum_amount   | float             | 成交总金额/最新成交额,累计值                                                                    |
+| trade_type   | int               | 交易类型 1: ‘双开’, 2: ‘双平’, 3: ‘多开’, 4: ‘空开’, 5: ‘空平’, 6: ‘多平’, 7: ‘多换’, 8: ‘空换’ |
+| last_volume  | int               | 瞬时成交量                                                                                      |
+| cum_position | int               | 合约持仓量(期),累计值（股票此值为 0）                                                           |
+| last_amount  | float             | 瞬时成交额 (郑商所 last_amount 为 0)                                                            |
+| created_at   | datetime.datetime | 创建时间                                                                                        |
+| quotes       | list[quote]       | 股票提供买卖 1-5 档,list[0]~list[4]分别对应买卖一档到五档；跌停时无买方报价，涨停时无卖方报价   |
+
+##### Quote - 报价(dict)
+
+| 参数名 | 类型  | 说明 |
+| :----- | :---- | :--- |
+| bid_p  | float | 买价 |
+| bid_v  | int   | 买量 |
+| ask_p  | float | 卖价 |
+| ask_v  | int   | 卖量 |
+
+
+
+##### Bar - Bar 行情
+
+支持以下多种频率的股票实时行情数据：
+
+| 交易所名称 | 市场代码 | 数据频率                           |
+| :--------- | :------- | :--------------------------------- |
+| 上交所     | SHSE     | 30s, 60s, 300s, 900s, 1800s, 3600s |
+| 深交所     | SZSE     | 30s, 60s, 300s, 900s, 1800s, 3600s |
+
+> 注：s 表示“秒”。
+
+行情包含以下数据:
+
+| 参数名    | 类型              | 说明                                                                       |
+| :-------- | :---------------- | :------------------------------------------------------------------------- |
+| symbol    | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol) |
+| frequency | str               | 频率                                                                       |
+| open      | float             | 开盘价                                                                     |
+| close     | float             | 收盘价                                                                     |
+| high      | float             | 最高价                                                                     |
+| low       | float             | 最低价                                                                     |
+| amount    | float             | 成交额                                                                     |
+| volume    | int               | 成交量                                                                     |
+| bob       | datetime.datetime | bar 开始时间                                                               |
+| eob       | datetime.datetime | bar 结束时间                                                               |
+
+
+
+### 历史行情数据
+
+掘金量化目前支持获取国内两个市场的股票历史行情数据。
+
+包含 Tick 行情和 Bar 行情。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+
+
+##### Tick - Tick 行情
+
+时间范围：最近三个月内
+
+逐笔交易行情，包含以下内容：
+
+| 参数名       | 类型              | 说明                                                                                            |
+| :----------- | :---------------- | :---------------------------------------------------------------------------------------------- |
+| symbol       | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol)                      |
+| open         | float             | 开盘价                                                                                          |
+| high         | float             | 最高价                                                                                          |
+| low          | float             | 最低价                                                                                          |
+| price        | float             | 最新价                                                                                          |
+| cum_volume   | int               | 成交总量/最新成交量,累计值                                                                      |
+| cum_amount   | float             | 成交总金额/最新成交额,累计值                                                                    |
+| trade_type   | int               | 交易类型 1：‘双开’, 2：‘双平’, 3：‘多开’, 4：‘空开’, 5：‘空平’, 6：‘多平’, 7：‘多换’, 8：‘空换’ |
+| last_volume  | int               | 瞬时成交量                                                                                      |
+| cum_position | int               | 合约持仓量(期),累计值(股票该值为 0)                                                             |
+| last_amount  | float             | 瞬时成交额（郑商所 last_amount 为 0）                                                           |
+| created_at   | datetime.datetime | 创建时间                                                                                        |
+| quotes       | list[quote]       | 股票提供买卖 1-5 档,list[0]~list[4]分别对应买卖一档到五档；跌停时无买方报价，涨停时无卖方报价   |
+
+##### Quote - 报价(dict)
+
+| 参数名 | 类型  | 说明 |
+| :----- | :---- | :--- |
+| bid_p  | float | 买价 |
+| bid_v  | int   | 买量 |
+| ask_p  | float | 卖价 |
+| ask_v  | int   | 卖量 |
+
+
+
+##### Bar - Bar 行情
+
+支持以下多种频率的股票历史行情数据：
+
+| 交易所名称 | 市场代码 | 频率以及数据范围                                                 |
+| :--------- | :------- | :--------------------------------------------------------------- |
+| 上交所     | SHSE     | 60s 以及 60s 的整数倍和 1d(2021-2-2 - 至今), 不提供 60s 以下数据 |
+| 深交所     | SZSE     | 60s 以及 60s 的整数倍和 1d(2021-2-2 - 至今), 不提供 60s 以下数据 |
+
+> 注：s 表示“秒”, d 表示“天”。
+
+行情包含以下数据:
+
+| 参数名    | 类型              | 说明                                                                       |
+| :-------- | :---------------- | :------------------------------------------------------------------------- |
+| symbol    | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol) |
+| frequency | str               | 频率                                                                       |
+| open      | float             | 开盘价                                                                     |
+| close     | float             | 收盘价                                                                     |
+| high      | float             | 最高价                                                                     |
+| low       | float             | 最低价                                                                     |
+| amount    | float             | 成交额                                                                     |
+| volume    | int               | 成交量                                                                     |
+| bob       | datetime.datetime | bar 开始时间                                                               |
+| eob       | datetime.datetime | bar 结束时间                                                               |

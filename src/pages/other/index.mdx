@@ -1,0 +1,184 @@
+# 各语言 SDK 下载
+
+## 1. C++ SDK 下载
+
+这三个变量不需要修改，程序自动从上传的 SDK 列表中自动获取
+
+掘金 3.0 量化终端多语言 SDK 再添一员——C++策略 SDK，擅长 C++策略编程的高手们再也不需要“将就”Python 语言了！
+
+C++策略 SDK 作为掘金多语言 SDK 的一员，保持了掘金策略编写的既有风格，也遵循 C++编程的习惯，更重要的是完美兼容掘金的研究、仿真、实盘等所有量化服务。
+
+C++ SDK 文档 [查看](https://www.myquant.cn/docs/cpp/177.html)
+
+<br />
+### Windows{' '}
+
+掘金 C++语言版本 API 策略开发包。开发包内含 API，文档，示例策略
+
+```html
+<div class="down-main row">
+  <span class="col-xs-5 col-sm-4 col-md-2">
+    <a
+      href="{$download}"
+      class="btn btn-danger btn-inline"
+      style="background-color:red;color:#fff;text-decoration:none !important;border:0px !important;"
+    >
+      32位&64位 下载
+    </a>
+  </span>
+</div>
+```
+
+<br />
+
+### Linux
+
+> 敬请期待
+
+<br />
+<br />
+<br />
+
+---
+
+## 2. C# SDK 下载
+
+C# SDK 文档 [查看](https://www.myquant.cn/docs/csharp.html)
+
+<br />
+### Windows{' '}
+
+掘金 C#语言版本 API 策略开发包。开发包内含 API，文档，示例策略
+
+```html
+<div class="down-main row">
+  <span class="col-xs-5 col-sm-4 col-md-2">
+    <a
+      href="{$download}"
+      class="btn btn-danger btn-inline"
+      style="background-color:red;color:#fff;text-decoration:none !important;border:0px !important;"
+    >
+      32位&64位 下载
+    </a>
+  </span>
+</div>
+```
+
+### C# SDK 升级日志
+
+- v3.1.3
+  升级日期：2021.4.1
+  升级内容：
+  【新增功能】
+  - 可转债业务接口
+    <br />
+- v3.1.2
+  升级日期：2021.3.30
+  升级内容：
+  【新增功能】
+  - 算法交易接口
+  - 信用交易接口
+  - 新股业务接口
+  - 基金相关业务接口
+  - 国债逆回购接口
+  - 功能码接口
+
+【修复】
+
+- 回测时以历史价格撮合市价单的 bug
+- 实盘时，委托与成交太多 api 取不到问题
+- Bar 没有 position 字段
+- 回测时 INE 市场没有 9:00-9:15 之间行情问题
+
+【优化】
+
+- 回测时，取成交与委托只返回当前交易日数据(当天结算后就清空)
+- 回测时成交添加成交时间
+- 向终端订阅消息失败时重试订阅，最多重试 5 次
+- 丰富实时模式下网络连接的日志
+
+---
+
+## 3. MATLAB SDK 下载
+
+MATLAB SDK 文档 [查看](https://www.myquant.cn/docs/matlab.html)
+
+<br />
+### Windows
+
+掘金 MATLAB 语言版本 API 策略开发包。开发包内含 API，文档，示例策略
+
+```html
+<div class="down-main row">
+  <span class="col-xs-5 col-sm-4 col-md-2">
+    <a
+      href="{$download}"
+      class="btn btn-danger btn-inline"
+      style="background-color:red;color:#fff;text-decoration:none !important;border:0px !important;"
+    >
+      64位 下载
+    </a>
+  </span>
+</div>
+```
+
+---
+
+## 4. Python SDK 下载
+
+### Python SDK 说明
+
+掘金 Python 语言版本 API 策略开发包。开发包内含 API，文档，示例策略[查看](https://www.myquant.cn/docs/python.html)
+
+- 支持`2.7.*， 3.6.*，3.7.*，3.8.*和3.9.*`的 Python 版本
+
+- 支持 Windows 和 Linux 系统的 Python
+
+- 支持 64 位和 32 位的 Python
+
+### 安装下载方式
+
+- 掘金 Python SDK 名为 gm， 已经打包上传到 PYPI 库
+
+- 可以通过命令行`python -m pip install gm -i https://pypi.doubanio.com/simple`快速下载安装
+
+### Python SDK 升级日志
+
+- Python SDK v3.0.134
+  升级日期：2021.3.2
+  升级内容： 1.新增接口 bond_convertible_call - 可转债转股 2.新增接口 bond_convertible_put - 可转债回售 3.新增接口 bond_convertible_put_cancel - 可转债回售撤销 4.调整接口 ipo_get_instruments - 查询当日新股/新债清单 （增加了 sec_type 参数） 5.调整接口 ipo_get_quota - 查询新股申购额度 （调整了数据返回结构） 6.调整常量增加 `SecType` 和 `OrderBusiness` 的枚举
+
+- Python SDK v3.0.132
+  升级日期：2021.2.5
+  升级内容： 1.统一和规范算法单中的 algo_param 参数命名 2.修复 get_history_instruments 指定 fields 字段报错问题 3.修复 context.data 取 bar 数据抛出告警问题
+
+- Python SDK v3.0.131
+  升级日期：2021.1.7
+  升级内容： 1.修复了期货订阅 bar 数据返回的 position 字段为空的问题。 2.修复了回测时间设置导致定时任务未能成功进入的问题。 3.修复了 get_orders()和 get_execution_reports()接口返回值问题。 4.修复了订阅 tick 数据，用 context.data 取数据 fields 字段有误的问题。 5.修复了订阅 tick 数据，9 点至 9 点 15 数据未返回的问题。 6.修复了涨跌停时 tick 字段缺失问题（填充为 0）。
+  7.history 接口 symbols 支持 list 格式。 8.修复了 get_history_instruemnts()返回值去掉 info 字段。 9.修复了 context.data 取 tick 数据不对齐的问题。 10.修复了 context.data 返回部分数据不复权的问题。
+
+- Python SDK v3.0.130
+  升级日期：2020.12.26
+  升级内容： 1.更新了 C SDK 2.增加 L2 字段：order_index 、exec_index 、ask_order_index 、bid_order_index
+  3.Linux 版本 SDK 支持 Python3.8 4.修复两融 account_id 传参问题
+
+- Python SDK v3.0.129
+  升级日期：2020.12.18
+  升级内容：
+  1.position 对象增加了 vwap_open, fpnl_open 字段
+
+- Python SDK v3.0.128
+  升级日期：2020.11.18
+  升级内容： 1.修复 get_strerror 返回二进制而非字符串的问题 2.优化算法传参 3.修复 py_gmi_get_child_orders 参数传递错误的问题
+
+- Python SDK v3.0.127
+  升级日期：2020.08.27
+  升级内容： 1.两融接口增加头寸来源字段参数：position_src 2.解决订阅 l2order 和 l2order_queue 而未定义 on_l2order、on_l2order_queue 函数报错的问题 3.新增基金与逆回购函数：bond_reverse_repurchase_agreement、fund_etf_buy、fund_etf_redemption、fund_subscribing、fund_buy、fund_redemption
+
+- Python SDK v3.0.126
+  升级日期：2020.06.16
+  升级内容： 1.新增功能码函数：raw_func 2.新增留痕函数：set_mfp 3.增加 Level2 相关函数
+  on_l2order、on_l2order_queue、get_history_l2orders、get_history_l2orders_queue 4.规范命名
+  get_history_transaction_l2 （原有）=> get_history_l2transactions（新增）
+  get_history_ticks_l2 （原有）=> get_history_l2ticks（新增）
+  get_history_bars_l2（原有） => get_history_l2bars（新增） 5.新增两融接口 6.解决 Python3.8 SDK 找不到 gm.csdk.c_cdk 模块的问题 7.优化 data 返回

@@ -1,0 +1,606 @@
+# 数据结构
+
+## 1. 数据类
+
+### Tick - Tick 结构
+
+逐笔行情数据
+
+```cpp
+struct Tick
+{
+	char                   symbol[LEN_SYMBOL];
+	double                 created_at;               ///<utc时间，精确到毫秒
+	float                  price;                    ///<最新价
+	float                  open;                     ///<开盘价
+	float                  high;                     ///<最高价
+	float                  low;                      ///<最低价
+	double                 cum_volume;               ///<成交总量
+	double                 cum_amount;               ///<成交总金额/最新成交额,累计值
+	long long              cum_position;             ///<合约持仓量(期),累计值
+	double                 last_amount;              ///<瞬时成交额
+	int                    last_volume;              ///<瞬时成交量
+	int                    trade_type;               ///(保留)交易类型,对应多开,多平等类型
+	Quote                  quotes[DEPTH_OF_QUOTE];   ///报价, 下标从0开始，0-表示第一档，1-表示第二档，依次类推
+
+};
+
+```
+
+#### 报价`Quote`
+
+```cpp
+struct Quote
+{
+	float      bid_price;                            ///本档委买价
+	long long  bid_volume;                           ///本档委买量
+	float      ask_price;                            ///本档委卖价
+	long long  ask_volume;                           ///本档委卖量
+};
+
+```
+
+### Bar - Bar 结构
+
+bar 数据是指各种频率的行情数据
+
+```cpp
+
+struct Bar
+{
+	char                    symbol[LEN_SYMBOL];
+	double                  bob;                          ///bar的开始时间
+	double                  eob;                          ///bar的结束时间
+	float                   open;                         ///<开盘价
+	float                   close;                        ///<收盘价
+	float                   high;                         ///<最高价
+	float                   low;                          ///<最低价
+	double                  volume;                       ///<成交量
+	double                  amount;                       ///<成交金额
+	float                   pre_close;                    ///昨收盘价，只有日频数据赋值
+
+	long long               position;                     ///<持仓量
+	char                    frequency[LEN_FREQUENCY];     ///bar频度
+};
+
+
+```
+
+### L2Transaction - L2Transaction 结构
+
+L2 行情的逐笔成交
+
+```cpp
+
+struct L2Transaction
+{
+	char                   symbol[LEN_SYMBOL];
+	double                 created_at;               ///成交时间，utc时间
+	float                  price;                    ///成交价
+	long long              volume;					 ///成交量
+	char                   side;                     ///内外盘标记
+	char                   exec_type;                ///成交类型
+};
+
+
+```
+
+### L2Order - L2Order 结构
+
+L2 行情的逐笔委托
+
+```cpp
+
+struct L2Order
+{
+	char                   symbol[LEN_SYMBOL];
+	double                 created_at;               ///委托时间，utc时间
+	float                  price;                    ///委托价
+	long long              volume;					 ///委托量
+	char                   side;                     ///买卖方向
+	char                   order_type;               ///委托类型
+};
+
+
+```
+
+### L2OrderQueue - L2OrderQueue 结构
+
+L2 行情的委托队列
+
+```cpp
+
+struct L2OrderQueue
+{
+	char                   symbol[LEN_SYMBOL];
+	double                 created_at;                                  ///行情时间，utc时间
+	float                  price;                                       ///最优委托价
+	long long              volume;					                    ///委托量
+	char                   side;                                        ///买卖方向
+	int                    queue_orders;                                ///委托量队列中元素个数(最多50)
+	int                    queue_volumes[LEN_MAX_ORDER_QUEUE];          ///委托量队列(最多50个，有可能小于50, 有效数据长度取决于queue_orders)
+};
+
+
+```
+
+---
+
+## 2. 交易类
+
+### Account - 账户结构
+
+```cpp
+struct Account
+{
+	char            account_id[LEN_ID];           //账号ID
+	char            account_name[LEN_NAME];       //账户登录名
+	char            intro[LEN_INFO];              //账号描述
+	char            comment[LEN_INFO];            //账号备注
+};
+
+```
+
+### AccountStatus - 账户状态结构
+
+```cpp
+struct AccountStatus
+{
+	char            account_id[LEN_ID];           //账号ID
+	char            account_name[LEN_NAME];       //账户登录名
+	int             state;                        //账户状态
+	int             error_code;                   //错误码
+	char            error_msg[LEN_INFO];          //错误信息
+};
+
+```
+
+### Order - 委托结构
+
+```cpp
+
+struct Order
+{
+	char         strategy_id[LEN_ID];                     //策略ID
+	char         account_id[LEN_ID];                      //账号ID
+	char         account_name[LEN_NAME];                  //账户登录名
+
+	char         cl_ord_id[LEN_ID];                       //委托客户端ID
+	char         order_id[LEN_ID];                        //委托柜台ID
+	char         ex_ord_id[LEN_ID];                       //委托交易所ID
+	char         algo_order_id[LEN_ID];                   //算法母单ID
+	int          order_business;                          //业务类型
+
+	char         symbol[LEN_SYMBOL];                      //symbol
+	int          side;                                    //买卖方向，取值参考enum OrderSide
+	int          position_effect;                         //开平标志，取值参考enum PositionEffect
+	int          position_side;                           //持仓方向，取值参考enum PositionSide
+
+	int          order_type;                              //委托类型，取值参考enum OrderType
+	int          order_duration;                          //委托时间属性，取值参考enum OrderDuration
+	int          order_qualifier;                         //委托成交属性，取值参考enum OrderQualifier
+	int          order_src;                               //委托来源，取值参考enum OrderSrc
+	int          position_src;                            //头寸来源（仅适用融资融券），取值参考 enum PositionSrc
+
+	int          status;                                  //委托状态，取值参考enum OrderStatus
+	int          ord_rej_reason;                          //委托拒绝原因，取值参考enum OrderRejectReason
+	char         ord_rej_reason_detail[LEN_INFO];         //委托拒绝原因描述
+
+	double       price;                                   //委托价格
+
+	int          order_style;                             //委托风格，取值参考 enum OrderStyle
+	long long    volume;                                  //委托量
+	double       value;                                   //委托额
+	double       percent;                                 //委托百分比
+	long long    target_volume;                           //委托目标量
+	double       target_value;                            //委托目标额
+	double       target_percent;                          //委托目标百分比
+
+	long long    filled_volume;                           //已成量
+	double       filled_vwap;                             //已成均价（股票实盘支持，期货实盘不支持）
+	double       filled_amount;                           //已成金额（股票实盘支持，期货实盘不支持）
+
+	long long    created_at;                              //委托创建时间
+	long long    updated_at;                              //委托更新时间
+};
+
+```
+
+### AlgoOrder - 算法委托结构
+
+```cpp
+
+struct AlgoOrder
+{
+	char         strategy_id[LEN_ID];                     //策略ID
+	char         account_id[LEN_ID];                      //账号ID
+	char         account_name[LEN_NAME];                  //账户登录名
+
+	char         cl_ord_id[LEN_ID];                       //委托客户端ID
+	char         order_id[LEN_ID];                        //委托柜台ID
+	char         ex_ord_id[LEN_ID];                       //委托交易所ID
+	int          order_business;                          //业务类型
+
+	char         symbol[LEN_SYMBOL];                      //symbol
+	int          side;                                    //买卖方向，取值参考enum OrderSide
+	int          position_effect;                         //开平标志，取值参考enum PositionEffect
+	int          position_side;                           //持仓方向，取值参考enum PositionSide
+
+	int          order_type;                              //委托类型，取值参考enum OrderType
+	int          order_duration;                          //委托时间属性，取值参考enum OrderDuration
+	int          order_qualifier;                         //委托成交属性，取值参考enum OrderQualifier
+	int          order_src;                               //委托来源，取值参考enum OrderSrc
+	int          position_src;                            //头寸来源（仅适用融资融券），取值参考 enum PositionSrc
+
+	int          status;                                  //委托状态，取值参考enum OrderStatus
+	int          ord_rej_reason;                          //委托拒绝原因，取值参考enum OrderRejectReason
+	char         ord_rej_reason_detail[LEN_INFO];         //委托拒绝原因描述
+
+	double       price;                                   //委托价格
+
+	int          order_style;                             //委托风格，取值参考 enum OrderStyle
+	long long    volume;                                  //委托量
+	double       value;                                   //委托额
+	double       percent;                                 //委托百分比
+	long long    target_volume;                           //委托目标量
+	double       target_value;                            //委托目标额
+	double       target_percent;                          //委托目标百分比
+
+	long long    filled_volume;                           //已成量
+	double       filled_vwap;                             //已成均价
+	double       filled_amount;                           //已成金额
+	char         algo_name[LEN_NAME];                     //算法策略名
+	char         algo_param[LEN_PARAM];                   //算法策略参数
+	int          algo_status;                             //算法策略状态,仅作为AlgoOrder Pause请求入参，取值参考 enum AlgoOrderStatus
+	char         algo_comment[LEN_COMMENT];               //算法单备注
+
+	long long    created_at;                              //委托创建时间
+	long long    updated_at;                              //委托更新时间
+};
+```
+
+### AlgoParam - 算法参数结构
+
+```cpp
+
+struct AlgoParam
+{
+	char              algo_name[LEN_NAME];                 //算法名称
+	char              time_start[LEN_ISO_DATATIME];        //开始时间
+	char              time_end[LEN_ISO_DATATIME];          //结束时间
+	double            part_rate;                           //量比比例
+	int               min_amount;                          //最小委托金额
+};
+```
+
+### ExecRpt - 回报结构
+
+```cpp
+struct ExecRpt
+{
+	char               strategy_id[LEN_ID];                  //策略ID
+	char               account_id[LEN_ID];                   //账号ID
+	char               account_name[LEN_NAME];               //账户登录名
+
+	char               cl_ord_id[LEN_ID];                    //委托客户端ID
+	char               order_id[LEN_ID];                     //委托柜台ID
+	char               exec_id[LEN_ID];                      //委托回报ID
+
+	char               symbol[LEN_SYMBOL];                   //symbol
+
+	int                position_effect;                      //开平标志，取值参考enum PositionEffect
+	int                side;                                 //买卖方向，取值参考enum OrderSide
+	int                ord_rej_reason;                       //委托拒绝原因，取值参考enum OrderRejectReason
+	char               ord_rej_reason_detail[LEN_INFO];      //委托拒绝原因描述
+	int                exec_type;                            //执行回报类型, 取值参考enum ExecType
+
+	double             price;                                //委托成交价格
+	long long          volume;                               //委托成交量
+	double             amount;                               //委托成交金额
+	double             cost;                                 //委托成交成本金额（期货实盘支持，股票实盘不支持）
+	long long          created_at;                           //回报创建时间
+
+};
+
+```
+
+### Cash - 资金结构
+
+```cpp
+struct Cash
+{
+	char          account_id[LEN_ID];                        //账号ID
+	char          account_name[LEN_NAME];                    //账户登录名
+
+	int           currency;                                  //币种
+
+	double        nav;                                        //总资产(cum_inout + cum_pnl + fpnl - cum_commission)
+	double        fpnl;                                       //浮动盈亏(sum(each position fpnl))
+	double        frozen;                                     //持仓占用资金（期货实盘支持，股票实盘不支持）
+	double        order_frozen;                               //冻结资金
+	double        available;                                  //可用资金
+
+	double        balance;                                    //资金余额
+	double        market_value;                               //市值（股票实盘支持，期货实盘不支持）
+
+	long long     created_at;                                 //资金初始时间
+	long long     updated_at;                                 //资金变更时间
+
+};
+
+```
+
+### Position - 持仓结构
+
+```cpp
+struct Position
+{
+	char                 account_id[LEN_ID];              //账号ID
+	char                 account_name[LEN_NAME];          //账户登录名
+
+	char                 symbol[LEN_SYMBOL];              //symbol
+	int                  side;                            //持仓方向，取值参考enum PositionSide
+	long long            volume;                          //总持仓量; 昨持仓量(volume-volume_today)
+	long long            volume_today;                    //今日持仓量
+	double               vwap;                            //持仓均价(股票为基于开仓价的持仓均价，期货为基于结算价的持仓均价)
+	double               vwap_diluted;                    //摊薄成本价
+	double               vwap_open;                       //基于开仓价的持仓均价(期货)
+	double               amount;                          //持仓额(volume*vwap*multiplier)
+
+	double               price;                           //当前行情价格
+	double               fpnl;                            //持仓浮动盈亏((price-vwap)*volume*multiplier)
+	double               fpnl_open;                       //持仓浮动盈亏,基于开仓均价，适用于期货((price-vwap_open)*volume*multiplier)
+	double               cost;                            //持仓成本(vwap*volume*multiplier*margin_ratio)
+	long long            order_frozen;                    //挂单冻结仓位
+	long long            order_frozen_today;              //挂单冻结今仓仓位（仅上期所和上海能源交易中心支持）
+	long long            available;                       //可用总仓位(volume-order_frozen); 可用昨仓位(available-available_today)
+	long long            available_today;                 //可用今仓位(volume_today-order_frozen_today)（仅上期所和上海能源交易中心支持）
+	long long            available_now;                   //当前可平仓位
+	double               market_value;                    //持仓市值
+
+	long long            created_at;                      //建仓时间
+	long long            updated_at;                      //仓位变更时间
+
+};
+
+
+```
+
+### Indicator - 绩效指标结构
+
+```cpp
+
+struct Indicator
+{
+	char      account_id[LEN_ID];             //账号ID
+	double    pnl_ratio;                      //累计收益率(pnl/cum_inout)
+	double    pnl_ratio_annual;               //年化收益率
+	double    sharp_ratio;                    //夏普比率
+	double    max_drawdown;                   //最大回撤
+	double    risk_ratio;                     //风险比率
+	int       open_count;                     //开仓次数
+	int       close_count;                    //平仓次数
+	int       win_count;                      //盈利次数
+	int       lose_count;                     //亏损次数
+	double    win_ratio;                      //胜率
+
+	long long  created_at;                    //指标创建时间
+	long long  updated_at;                    //指标变更时间
+};
+
+```
+
+### Parameter - 动态参数结构
+
+```cpp
+
+struct Parameter
+{
+	char   key[LEN_ID];          //参数键
+	double value;                //参数值
+	double min;                  //可设置的最小值
+	double max;                  //可设置的最大值
+	char   name[LEN_NAME];       //参数名
+	char   intro[LEN_INFO];      //参数说明
+	char   group[LEN_NAME];      //组名
+	bool   readonly;             //是否只读
+};
+
+```
+
+### CollateralInstrument - 担保品标的结构
+
+```cpp
+struct CollateralInstrument
+{
+	char                 symbol[LEN_SYMBOL];  //担保证券标的
+	char                 name[LEN_NAME];      //名称
+	double               pledge_rate;         //折算率
+};
+```
+
+### BorrowableInstrument - 可做融券标的结构
+
+```cpp
+struct BorrowableInstrument
+{
+	char                 symbol[LEN_SYMBOL];        //可融证券标的
+	char                 name[LEN_NAME];            //名称
+	double               margin_rate_for_cash;      //融资保证金比率
+	double               margin_rate_for_security;  //融券保证金比率
+};
+```
+
+### BorrowableInstrumentPosition - 可做融券标的持仓结构
+
+```cpp
+struct BorrowableInstrumentPosition
+{
+	char                 symbol[LEN_SYMBOL];        //可融证券标的
+	char                 name[LEN_NAME];            //名称
+	double               balance;                   //证券余额
+	double               available;                 //证券可用
+};
+```
+
+### CreditContract - 融资融券合约结构
+
+```cpp
+struct CreditContract
+{
+	char symbol[LEN_SYMBOL];              //证券代码 stkcode
+	char name[LEN_NAME];                  //名称
+	int orderdate;                        //委托日期
+	char ordersno[LEN_ID];                //委 托 号
+	char creditdirect;                    //融资融券方向
+	double orderqty;                      //委托数量
+	double matchqty;                      //成交数量
+	double orderamt;                      //委托金额
+	double orderfrzamt;                   //委托冻结金额
+	double matchamt;                      //成交金额
+	double clearamt;                      //清算金额
+	char lifestatus;                      //合约状态
+	int enddate;                          //负债截止日期
+	int oldenddate;                       //原始的负债截止日期
+	double creditrepay;                   //T日之前归还金额
+	double creditrepayunfrz;              //T日归还金额
+	double fundremain;                    //应还金额
+	double stkrepay;                      //T日之前归还数量
+	double stkrepayunfrz;                 //T日归还数量
+	double stkremain;                     //应还证券数量
+	double stkremainvalue;                //应还证券市值
+	double fee;                           //融资融券息、费
+	double overduefee;                    //逾期未偿还息、费
+	double fee_repay;                     //己偿还息、费
+	double punifee;                       //利息产生的罚息
+	double punifee_repay;                 //己偿还罚息
+	double rights;                        //未偿还权益金额
+	double overduerights;                 //逾期未偿还权益
+	double rights_repay;                  //己偿还权益
+	double lastprice;                     //最新价
+	double profitcost;                    //浮动盈亏
+	int sysdate;                          //系统日期
+	char sno[LEN_ID];                     //合约编号
+	int lastdate;                         //最后一次计算息费日期
+	int closedate;                        //合约全部偿还日期
+	double punidebts;                     //逾期本金罚息
+	double punidebts_repay;               //本金罚息偿还
+	double punidebtsunfrz;                //逾期本金罚息
+	double punifeeunfrz;                  //逾期息费罚息
+	double punirights;                    //逾期权益罚息
+	double punirights_repay;              //权益罚息偿还
+	double punirightsunfrz;               //逾期权益罚息
+	double feeunfrz;                      //实时偿还利息
+	double overduefeeunfrz;               //实时偿还逾期利息
+	double rightsqty;                     //未偿还权益数量
+	double overduerightsqty;              //逾期未偿还权益数量
+};
+
+```
+
+### CreditCash - 融资融券资金信息结构
+
+```cpp
+struct CreditCash
+{
+	double fundintrrate;                        //融资利率
+	double stkintrrate;                         //融券利率
+	double punishintrrate;                      //罚息利率
+	char   creditstatus;                        //信用状态
+	double marginrates;                         //维持担保比例
+	double realrate;                            //实时担保比例
+	double asset;                               //总资产
+	double liability;                           //总负债
+	double marginavl;                           //保证金可用数
+	double fundbal;                             //资金余额
+	double fundavl;                             //资金可用数
+	double dsaleamtbal;                         //融券卖出所得资金
+	double guaranteeout;                        //可转出担保资产
+	double gagemktavl;                          //担保证券市值
+	double fdealavl;                            //融资本金
+	double ffee;                                //融资息费
+	double ftotaldebts;                         //融资负债合计
+	double dealfmktavl;                         //应付融券市值
+	double dfee;                                //融券息费
+	double dtotaldebts;                         //融券负债合计
+	double fcreditbal;                          //融资授信额度
+	double fcreditavl;                          //融资可用额度
+	double fcreditfrz;                          //融资额度冻结
+	double dcreditbal;                          //融券授信额度
+	double dcreditavl;                          //融券可用额度
+	double dcreditfrz;                          //融券额度冻结
+	double rights;                              //红利权益
+	double serviceuncomerqrights;               //红利权益(在途)
+	double rightsqty;                           //红股权益
+	double serviceuncomerqrightsqty;            //红股权益(在途)
+	double acreditbal;                          //总额度
+	double acreditavl;                          //总可用额度
+	double acashcapital;                        //所有现金资产（所有资产、包括融券卖出）
+	double astkmktvalue;                        //所有证券市值（包含融资买入、非担保品）
+	double withdrawable;                        //可取资金
+	double netcapital;                          //净资产
+	double fcreditpnl;                          //融资盈亏
+	double dcreditpnl;                          //融券盈亏
+	double fcreditmarginoccupied;               //融资占用保证金
+	double dcreditmarginoccupied;               //融券占用保证金
+	double collateralbuyableamt;                //可买担保品资金
+	double repayableamt;                        //可还款金额
+	double dcreditcashavl;                      //融券可用资金
+};
+```
+
+### IPOQI -新股申购额度
+
+```cpp
+struct IPOQI
+{
+	char exchange[LEN_TYPE];        //市场代码
+	double quota;                   //市场配额
+	double sse_star_quota;          //上海科创板配额
+};
+
+```
+
+### IPOInstruments - 新股标的结构
+
+```cpp
+struct IPOInstruments
+{
+	char     symbol[LEN_SYMBOL];     //申购新股symbol
+	double   price;                  //申购价格
+	int      min_vol;                //申购最小数量
+	int      max_vol;                //申购最大数量
+};
+```
+
+### IPOMatchNumber - 配号结构
+
+```cpp
+struct IPOMatchNumber
+{
+	char order_id[LEN_ID];           //委托号
+	char symbol[LEN_SYMBOL];         //新股symbol
+	int   volume;                    //成交数量
+	char match_number[LEN_ID];       //申购配号
+	int  order_at;                   //委托日期
+	int  match_at;                    //配号日期
+};
+```
+
+### IPOLotInfo - 中签结构
+
+```cpp
+struct IPOLotInfo
+{
+	char symbol[LEN_SYMBOL];   //新股symbol
+	int order_at;              //委托日期
+	int lot_at;                //中签日期
+	int lot_volume;            //中签数量
+	int give_up_volume;        //放弃数量
+	double price;              //中签价格
+	double amount;             //中签金额
+	double pay_volume;         //已缴款数量
+	double pay_amount;         //已缴款金额
+
+};
+```

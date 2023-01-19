@@ -1,0 +1,729 @@
+# 数据查询函数
+
+### GMApi 静态方法
+
+## 1. 设置 token - SetToken
+
+**函数原型**
+
+```csharp
+static int SetToken(string token);
+```
+
+**参数**
+
+| 参数名 | 类型   | 说明                                              |
+| :----- | :----- | :------------------------------------------------ |
+| token  | string | 改参数通过 客户端->系统设置->(秘钥管理)token 获得 |
+| 返回值 | int    | 0 成功， 其他表示错误码                           |
+
+**示例**
+
+```csharp
+GMApi.SetToken("27cbdfd8cd9b86dea554a5612baa4a8eee");
+```
+
+## 2. 设置终端服务地址 - SetAddr
+
+设置终端服务地址, 默认本地地址, 可不填
+
+**函数原型：**
+
+```csharp
+void SetAddr(string addr)
+```
+
+**参数:**
+
+| 参数名 | 类型   | 说明                            |
+| :----- | :----- | :------------------------------ |
+| addr   | string | ip+终端端口，如”127.0.0.1:7001” |
+
+**注意：**
+**1.**如运行策略与终端不在同一设备上，必须调用此方法，`7001`为终端端口
+**2.**不关注策略运行结果，可不启动终端并设置终端服务地址为 `discovery.myquant.cn:7061`
+
+## 3. 查询当前行情快照 - Current
+
+查询当前行情快照，返回 tick 数据。回测时，返回回测时间点的 tick 数据
+
+**函数原型:**
+
+```csharp
+static GMDataList<Tick> Current(string symbols);
+```
+
+**参数：**
+
+```csharp
+| 参数名  | 类型             | 说明                                               |
+| :------ | :--------------- | :------------------------------------------------- |
+| symbols | string           | 查询代码，如有多个代码, 中间用 `,` (英文逗号) 隔开 |
+| 返回值  | GMDataList<Tick> | 一个`GMDataList<Tick>`对象                         |
+```
+
+**示例：**
+
+```csharp
+static GMDataList<Tick> currentData = GMApi.Current("SZSE.000001,SZSE.000002");
+```
+
+**注意：**
+
+startTime 和 endTime 中月,日,时,分,秒均可以只输入个位数,例:`"2010-7-8 9:40:0"`或`"2017-7-30 12:3:0"`,但若对应位置为零，则`0`不可被省略,如不可输入`"2017-7-30 12:3: "`
+
+## 4. 查询历史 Tick 行情 - HistoryTicks
+
+**函数原型:**
+
+```csharp
+static GMDataList<Tick> HistoryTicks(string symbols, string startTime, string endTime, Adjust adjust = Adjust.ADJUST_NONE, string adjustEndTime = null, bool skipSuspended = true, string fillMissing = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名        | 类型             | 说明                                                                                         |
+| :------------ | :--------------- | :------------------------------------------------------------------------------------------- |
+| symbols       | string           | 标的代码,若要获取多个标的的历史数据，可以采用中间用 `,` (英文逗号) 隔开的方法                |
+| startTime     | string           | 开始时间 (%Y-%m-%d %H:%M:%S 格式),其中日线包含 start_time 数据, 非日线不包含 start_time 数据 |
+| endTime       | string           | 结束时间 (%Y-%m-%d %H:%M:%S 格式),                                                           |
+| adjust        | Adjust           | 复权方式，参见 `enum Adjust`                                                                 |
+| adjustEndTime | string           | 复权基点时间, 默认当前时间                                                                   |
+| skipSuspended | bool             | 是否跳过停牌, 默认跳过                                                                       |
+| fillMissing   | string           | 填充方式, `None` - 不填充, `'NaN'` - 用空值填充, `'Last'` - 用上一个值填充, 默认 None        |
+| 返回值        | GMDataList<Tick> | 一个`GMDataList<Tick>`对象                                                                   |
+```
+
+**示例：**
+
+```csharp
+GMDataList<Tick> historyTick = GMApi.HistoryTicks("SHSE.000300", "2010-07-28 08:00:00", "2017-07-30 16:00:00")
+```
+
+**注意：**
+
+**1.**startTime 和 endTime 中月,日,时,分,秒均可以只输入个位数,例:`"2010-7-8 9:40:0"`或`"2017-7-30 12:3:0"`,但若对应位置为零，则`0`不可被省略,如不可输入`"2017-7-30 12:3: "`
+
+**2.** skipSuspended 和 fillMissing 参数暂不支持
+
+## 5. 查询历史 Bar 行情 - HistoryBars
+
+**函数原型:**
+
+```csharp
+static GMDataList<Bar> HistoryBars(string symbols, string frequency, string startTime, string endTime, Adjust adjust = Adjust.ADJUST_NONE, string adjustEndTime = null, bool skipSuspended = true, string fillMissing = null)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名        | 类型            | 说明                                                                                         |
+| :------------ | :-------------- | :------------------------------------------------------------------------------------------- |
+| symbols       | string          | 标的代码,若要获取多个标的的历史数据，可以采用中间用 `,` (英文逗号) 隔开的方法                |
+| frequency     | string          | 频率, 支持 '1d', '15s', '30s' , '60s' , '3600s' 等                                           |
+| startTime     | string          | 开始时间 (%Y-%m-%d %H:%M:%S 格式),其中日线包含 start_time 数据, 非日线不包含 start_time 数据 |
+| endTime       | string          | 结束时间 (%Y-%m-%d %H:%M:%S 格式),                                                           |
+| adjust        | Adjust          | 复权方式，参见 `enum Adjust`                                                                 |
+| adjustEndTime | string          | 复权基点时间, 默认当前时间                                                                   |
+| skipSuspended | bool            | 是否跳过停牌, 默认跳过                                                                       |
+| fillMissing   | string          | 填充方式, `None` - 不填充, `'NaN'` - 用空值填充, `'Last'` - 用上一个值填充, 默认 None        |
+| 返回值        | GMDataList<Bar> | 一个`GMDataList<Bar>`对象                                                                    |
+```
+
+**示例：**
+
+```csharp
+//获取1分钟的bar
+GMDataList<Bar> historyBar = GMApi.HistoryBars("SHSE.000300", "60s", "2010-07-28 08:00:00", "2017-07-30 16:00:00");
+
+//获取60分钟的bar
+GMDataList<Bar> historyBar = GMApi.HistoryBars("SHSE.000300", "3600s", "2010-07-28 08:00:00", "2017-07-30 16:00:00");
+
+//获取日线
+GMDataList<Bar> historyBar = GMApi.HistoryBars("SHSE.000300", "1d", "2010-07-28 08:00:00", "2018-07-30 16:00:00");
+```
+
+**注意：**
+
+**1.**startTime 和 endTime 中月,日,时,分,秒均可以只输入个位数,例:`"2010-7-8 9:40:0"`或`"2017-7-30 12:3:0"`,但若对应位置为零，则`0`不可被省略,如不可输入`"2017-7-30 12:3: "`
+
+**2.** skipSuspended 和 fillMissing 参数暂不支持
+
+## 6. 查询最新 n 条 Tick 行情 - HistoryTicksN
+
+**函数原型:**
+
+```csharp
+static GMDataList<Tick> HistoryTicksN(string symbols, int n, string endTime = null, Adjust adjust = Adjust.ADJUST_NONE, string adjustEndTime = null, bool skipSuspended = true, string fillMissing = null)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名        | 类型             | 说明                                                                                        |
+| :------------ | :--------------- | :------------------------------------------------------------------------------------------ |
+| symbols       | string           | 标的代码(只允许单个标的的代码字符串)                                                        |
+| n             | int              | 获取行情的数量                                                                              |
+| endTime       | string           | 从指定时间开始，`往前`取行情, 如果为 NULL, 那么为当前时间开始（回测模式下为当前回测时间点） |
+| adjust        | Adjust           | 复权方式，参见 `enum Adjust`                                                                |
+| adjustEndTime | string           | 复权基点时间, 默认当前时间                                                                  |
+| skipSuspended | bool             | 是否跳过停牌, 默认跳过                                                                      |
+| fillMissing   | string           | 填充方式, `None` - 不填充, `'NaN'` - 用空值填充, `'Last'` - 用上一个值填充, 默认 None       |
+| 返回值        | GMDataList<Tick> | 一个`GMDataList<Tick>`对象                                                                  |
+```
+
+**示例：**
+
+```csharp
+
+//获取沪深300最新10条tick
+GMDataList<Tick> ticks = GMApi.HistoryTicksN("SHSE.000300", 10);
+```
+
+**注意：**
+
+**1.**endTime 中月,日,时,分,秒均可以只输入个位数,例:`"2010-7-8 9:40:0"`或`"2017-7-30 12:3:0"`,但若对应位置为零，则`0`不可被省略,如不可输入`"2017-7-30 12:3: "`
+
+**2.** skipSuspended 和 fillMissing 参数暂不支持
+
+## 7. 查询最新 n 条 Bar 行情 - HistoryBarsN
+
+**函数原型:**
+
+```csharp
+static GMDataList<Bar> HistoryBarsN(string symbols, string frequency, int n, string endTime = null, Adjust adjust = Adjust.ADJUST_NONE, string adjustEndTime = null, bool skipSuspended = true, string fillMissing = null)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名        | 类型            | 说明                                                                                        |
+| :------------ | :-------------- | :------------------------------------------------------------------------------------------ |
+| symbols       | string          | 标的代码(只允许单个标的的代码字符串)                                                        |
+| frequency     | string          | 频率, 支持 '1d', '15s', '30s' , '60s' , '3600s' 等                                          |
+| n             | int             | 获取行情的数量                                                                              |
+| endTime       | string          | 从指定时间开始，`往前`取行情, 如果为 NULL, 那么为当前时间开始（回测模式下为当前回测时间点） |
+| adjust        | Adjust          | 复权方式，参见 `enum Adjust`                                                                |
+| adjustEndTime | string          | 复权基点时间, 默认当前时间                                                                  |
+| skipSuspended | bool            | 是否跳过停牌, 默认跳过                                                                      |
+| fillMissing   | string          | 填充方式, `None` - 不填充, `'NaN'` - 用空值填充, `'Last'` - 用上一个值填充, 默认 None       |
+| 返回值        | GMDataList<Bar> | 一个`GMDataList<Bar>`对象                                                                   |
+```
+
+**示例：**
+
+```csharp
+
+//获取沪深300最新10条1分钟bar
+GMDataList<Bar> bars = GMApi.HistoryBarsN("SHSE.000300", "60s", 10);
+```
+
+**注意：**
+
+**1.**endTime 中月,日,时,分,秒均可以只输入个位数,例:`"2010-7-8 9:40:0"`或`"2017-7-30 12:3:0"`,但若对应位置为零，则`0`不可被省略,如不可输入`"2017-7-30 12:3: "`
+
+**2.** skipSuspended 和 fillMissing 参数暂不支持
+
+## 8. 查询基本面数据 - GetFundamentals
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetFundamentals(string table, string symbols, string startDate, string endDate, string fields = null, string filter = null, string orderBy = null, int limit = 100000)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                                                                                                                                                                    |
+| :-------- | :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| table     | string            | 表名，只支持单表查询. 具体表名及 fields 字段名及 filter 可过滤的字段参考 [财务数据文档](https://www.myquant.cn/docs/l3333/913.html#865888265be1685f)                    |
+| symbols   | string            | 标的代码, 多个代码可用 `,`(英文逗号)分割, 如 `"symbol1,symbol2"`                                                                                                        |
+| startDate | string            | 开始时间, (%Y-%m-%d 格式)                                                                                                                                               |
+| endDate   | string            | 结束时间, (%Y-%m-%d 格式)                                                                                                                                               |
+| fields    | string            | 查询字段 (必填)                                                                                                                                                         |
+| filter    | string            | 查询过滤,使用方法参考例 3、例 4                                                                                                                                         |
+| orderBy   | string            | 排序方式, 默认 `null`. `TCLOSE` 表示按 `TCLOSE` 升序排序. `-TCLOSE` 表示按 `TCLOSE` 降序排序. `TCLOSE, -NEGOTIABLEMV` 表示按 `TCLOSE` 升序, `NEGOTIABLEMV` 降序综合排序 |
+| limit     | int               | 数量. 为保护服务器, 一次查询最多返回 `40000` 条记录                                                                                                                     |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象                                                                                                                                             |
+```
+
+**示例：**
+
+例 1: 取股票代码 `SHSE.600000, SZSE.000001`, 离 `2017-01-01` 最近一个交易日的 股票交易财务衍生表 的 `TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI` 字段的值
+
+```csharp
+GMData<DataTable> ds = GMApi.GetFundamentals("trading_derivative_indicator", "SHSE.600000,SZSE.000001", "2017-01-01", "2017-01-01",
+                "TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI")
+```
+
+例 2: 取股票代码 `SHSE.600000, SZSE.000001`, 指定时间段 `2016-01-01 -- 2017-01-01` 股票交易财务衍生表 的 `TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI` 字段的值
+
+```csharp
+GMData<DataTable> ds = GMApi.GetFundamentals("trading_derivative_indicator", "SHSE.600000,SZSE.000001", "2016-01-01", "2017-01-01",
+                "TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI")
+```
+
+例 3: 取指定股票 `SHSE.600000, SHSE.600001, SHSE.600002` 离 `2017-01-01` 最近一个交易日, 且满足条件 `PCTTM > 0 and PCTTM < 10` 股票交易财务衍生表 的 `TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI` 字段的值
+
+```csharp
+GMData<DataTable> ds = GMApi.GetFundamentals("trading_derivative_indicator", "SHSE.600000,SHSE.600001,SHSE.600002", "2017-01-01", "2017-01-01", "PCTTM > 0 and PCTTM < 10",
+                "TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI")
+```
+
+例 4: 取指定股票 `SHSE.600000,SZSE.000001` 离 `2016-01-20` 最近一个财报, 同时满足条件 `CURFDS > 0 and TOTLIABSHAREQUI > 0` 的 资产负债 的数据
+
+```csharp
+GMData<DataTable> ds = GMApi.GetFundamentals("balance_sheet", "2016-01-20", "2016-01-20",
+                "CURFDS, SETTRESEDEPO, PLAC, TRADFINASSET, ',
+                symbols='SHSE.600000, SZSE.000001'",
+                "CURFDS > 0 and TOTLIABSHAREQUI > 0"
+                )
+```
+
+**注意:**
+
+**1.**当 `startDate` == `endDate` 时, 取所举每个股票离 `endDate` 最近业务日期(交易日期或报告日期) 一条数据,当 `startDate` < `endDate` 时, 取指定时间段的数据,当 `startDate` > `endDate` 时, 返回`空list/空DataFrame`
+
+**2.**startDate 和 endDate 中月,日均可以只输入个位数,例:`'2010-7-8'`或`'2017-7-30'`
+
+**3.**在该函数中，table 参数只支持输入一个表名，若表名输入错误或以`'table1,table2'`方式输入多个表名，函数返回空结果集
+
+**4.**若表名输入正确，但查询字段中出现非指定字符串，则返回错误
+
+## 9. 查询基本面数据最新 n 条 - GetFundamentalsN
+
+取指定股票的最近 `endDate` 的 `n` 条记录
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetFundamentalsN(string table, string symbols, string endDate, int n = 1, string fields = null, string filter = null, string orderBy = null)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名  | 类型              | 说明                                                                                                                                 |
+| :------ | :---------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| table   | string            | 表名. 具体表名及 fields 字段名及 filter 可过滤的字段参考 [财务数据文档](https://www.myquant.cn/docs/l3333/913.html#865888265be1685f) |
+| symbols | string            | 标的代码, 多个代码可用 `,`(英文逗号)分割                                                                                             |
+| endDate | string            | 结束时间, (%Y-%m-%d 格式)                                                                                                            |
+| fields  | string            | 查询字段 (必填)                                                                                                                      |
+| filter  | string            | 查询过滤,,使用方法参考`GetFundamentals`的例 3、例 4                                                                                  |
+| n       | int               | 每个股票取最近的数量(正整数)                                                                                                         |
+| 返回值  | GMData<DataTable> | 一个`GMData<DataTable>`对象                                                                                                          |
+```
+
+**示例：**
+
+例: 取股票代码 `SHSE.600000, SZSE.000001`, 离 `2017-01-01` 最近 3 条(每个股票都有 3 条) 股票交易财务衍生表 的 `TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI` 字段的值
+
+```csharp
+GMData<DataTable> ds = GMApi.GetFundamentalsN("trading_derivative_indicator", "SHSE.600000, SZSE.000001", "2017-01-01", 3,
+                   "TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI")
+```
+
+**注意:**
+
+**1.**endDate 中月,日均可以只输入个位数,例:`'2010-7-8'`或`'2017-7-30'`
+
+**2.**在该函数中，table 参数只支持输入一个表名，若表名输入错误或以`'table1,table2'`方式输入多个表名，函数返回空结果集
+
+**3.**若表名输入正确，但查询字段中出现非指定字符串，则返回错误
+
+## 10. 查询最新交易标的信息 - GetInstruments
+
+查询最新交易标的信息,有基本数据及最新日频数据
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetInstruments(string symbols = null, string exchanges = null, string secTypes = null, string fields = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                                                                                                                                                          |
+| :-------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| symbols   | string            | 股票代码，多个代码可用 `,`(英文逗号)分割, null 表示所有                                                                                                       |
+| exchanges | string            | 交易所代码, 多个交易所代码可用 `,`(英文逗号)分割, null 表示所有                                                                                               |
+| secTypes  | string            | 指定类别, 品种类型， stock: 股票, fund: 基金, index: 指数, future: 期货, option: 期权, confuture: 虚拟合约, 多个品种可用 `,`(英文逗号)分割, null 表示所有品种 |
+| fields    | string            | 查询字段 默认 null 表示所有                                                                                                                                   |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象                                                                                                                                   |
+```
+
+**fields 字段：**
+
+| 字段名       | 类型     | 说明                                                                                                                                                                                                                                                                                                                        |
+| :----------- | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| symbol       | string   | 标的代码                                                                                                                                                                                                                                                                                                                    |
+| sec_level    | int      | 1-正常,2-ST 股票,3-\*ST 股票,4-股份转让,5-处于退市整理期的证券,6-上市开放基金 LOF,7-交易型开放式指数基金(ETF),8-非交易型开放式基金(暂不交易,仅揭示基金净值及开放申购赎回业务),9-仅提供净值揭示服务的开放式基金;,10-仅在协议交易平台挂牌交易的证券,11-仅在固定收益平台挂牌交易的证券,12-风险警示产品,13-退市整理产品,99-其它 |
+| is_suspended | int      | 是否停牌. 1: 是, 0: 否                                                                                                                                                                                                                                                                                                      |
+| multiplier   | double   | 合约乘数                                                                                                                                                                                                                                                                                                                    |
+| margin_ratio | double   | 保证金比率                                                                                                                                                                                                                                                                                                                  |
+| settle_price | double   | 结算价                                                                                                                                                                                                                                                                                                                      |
+| position     | int      | 持仓量                                                                                                                                                                                                                                                                                                                      |
+| pre_close    | double   | 昨收价                                                                                                                                                                                                                                                                                                                      |
+| pre_settle   | double   | 昨结算价                                                                                                                                                                                                                                                                                                                    |
+| upper_limit  | double   | 涨停价                                                                                                                                                                                                                                                                                                                      |
+| lower_limit  | double   | 跌停价                                                                                                                                                                                                                                                                                                                      |
+| adj_factor   | double   | 复权因子.基金跟股票才有                                                                                                                                                                                                                                                                                                     |
+| created_at   | DateTime | 交易日期                                                                                                                                                                                                                                                                                                                    |
+
+**注意：**
+
+**1.**停牌时且股票发生除权除息, 涨停价和跌停价可能有误差
+
+**2.**预上市股票以 1900-01-01 为虚拟发布日期，未退市股票以 2038-01-01 为虚拟退市日期。
+
+**示例：**
+
+```csharp
+GMApi.GetInstruments("SZSE.000001");		//获取平安银行股票信息
+GMApi.GetInstruments(null, "SZSE,SHSE", "stock");		//获取深交所、上交所所有股票信息
+```
+
+## 11. 查询交易标的历史数据 - GetHistoryInstruments
+
+返回指定 symbols 的标的日频历史数据
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetHistoryInstruments(string symbols, string startDate, string endDate, string fields = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                                                                                              |
+| :-------- | :---------------- | :------------------------------------------------------------------------------------------------ |
+| symbols   | string            | 标的代码, 多个代码可用 `,`(英文逗号)分割,也支持 `['symbol1', 'symbol2']` 这种列表格式, 是必填参数 |
+| startDate | string            | 开始时间. (%Y-%m-%d 格式)                                                                         |
+| endDate   | string            | 结束时间. (%Y-%m-%d 格式)                                                                         |
+| fields    | string            | 查询字段. null 表示所有字段                                                                       |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象                                                                       |
+```
+
+**fields 字段：**
+
+| 字段名       | 类型     | 说明                                                                                                                                                                                                                                                                                                                        |
+| :----------- | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| symbol       | string   | 标的代码                                                                                                                                                                                                                                                                                                                    |
+| sec_level    | int      | 1-正常,2-ST 股票,3-\*ST 股票,4-股份转让,5-处于退市整理期的证券,6-上市开放基金 LOF,7-交易型开放式指数基金(ETF),8-非交易型开放式基金(暂不交易,仅揭示基金净值及开放申购赎回业务),9-仅提供净值揭示服务的开放式基金;,10-仅在协议交易平台挂牌交易的证券,11-仅在固定收益平台挂牌交易的证券,12-风险警示产品,13-退市整理产品,99-其它 |
+| is_suspended | int      | 是否停牌. 1: 是, 0: 否                                                                                                                                                                                                                                                                                                      |
+| multiplier   | double   | 合约乘数                                                                                                                                                                                                                                                                                                                    |
+| margin_ratio | double   | 保证金比率                                                                                                                                                                                                                                                                                                                  |
+| settle_price | double   | 结算价                                                                                                                                                                                                                                                                                                                      |
+| position     | int      | 持仓量                                                                                                                                                                                                                                                                                                                      |
+| pre_close    | double   | 昨收价                                                                                                                                                                                                                                                                                                                      |
+| pre_settle   | double   | 昨结算价                                                                                                                                                                                                                                                                                                                    |
+| upper_limit  | double   | 涨停价                                                                                                                                                                                                                                                                                                                      |
+| lower_limit  | double   | 跌停价                                                                                                                                                                                                                                                                                                                      |
+| adj_factor   | double   | 复权因子.基金跟股票才有                                                                                                                                                                                                                                                                                                     |
+| created_at   | DateTime | 交易日期                                                                                                                                                                                                                                                                                                                    |
+
+**示例：**
+
+```csharp
+GMApi.GetHistoryInstruments("SZSE.000001,SZSE.000002", "2017-09-19", "2017-09-19");
+```
+
+**注意：**
+
+**1.**停牌时且股票发生除权除息, 涨停价和跌停价可能有误差
+
+**2.**为保护服务器, 单次查询最多返回 **3300** 条记录
+
+**3.**startDate 和 endDate 中月,日均可以只输入个位数,例:`'2010-7-8'`或`'2017-7-30'`
+
+## 12. 查询交易标的基本信息 - GetInstrumentinfos
+
+获取到交易标的基本信息, 与时间无关.
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetInstrumentinfos(string symbols = null, string exchanges = null, string secTypes = null, string names = null, string fields = null)
+
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                                                                                                                                                          |
+| :-------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| symbols   | string            | 标的代码, 多个代码可用 `,`(英文逗号)分割, NULL 表示所有                                                                                                       |
+| exchanges | string            | 交易市场代码, 多个交易所代码可用 `,`(英文逗号)分割, NULL 表示所有市场                                                                                         |
+| secTypes  | string            | 指定类别, 品种类型， stock: 股票, fund: 基金, index: 指数, future: 期货, option: 期权, confuture: 虚拟合约, 多个品种可用 `,`(英文逗号)分割, null 表示所有品种 |
+| names     | string            | 查询代码, NULL 表示所有                                                                                                                                       |
+| fields    | string            | 查询字段 NULL 表示所有                                                                                                                                        |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象                                                                                                                                   |
+```
+
+**字段：**
+
+| 字段名        | 类型     | 说明                                                                  |
+| :------------ | :------- | :-------------------------------------------------------------------- |
+| symbol        | string   | 标的代码                                                              |
+| sec_type      | int      | 1: 股票, 2: 基金, 3: 指数, 4: 期货, 5: 期权, 10: 虚拟合约             |
+| exchange      | string   | 见[交易所代码](../python/python_concept.html#交易所代码 '交易所代码') |
+| sec_id        | string   | 代码                                                                  |
+| sec_name      | string   | 名称                                                                  |
+| price_tick    | double   | 最小变动单位                                                          |
+| listed_date   | DateTime | 上市日期                                                              |
+| delisted_date | DateTime | 退市日期                                                              |
+
+**示例：**
+
+```csharp
+GMData<DataTable> ds = GMApi.GetInstrumentinfos("SHSE.000001,SHSE.000002");
+```
+
+**注意：**
+
+**1.**对于检索所需标的信息的 4 种手段`symbols,exchanges,secTypes,names`,若输入参数之间出现任何矛盾（换句话说，所有的参数限制出满足要求的交集为空),则返回空结果集
+例如`GetInstrumentinfos("SZSE","4")` 返回的是空结果集
+
+## 13. 查询指数成份股 - GetConstituents
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetConstituents(string index, string tradeDate = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名     | 类型              | 说明                                                          |
+| :--------- | :---------------- | :------------------------------------------------------------ |
+| index      | string            | 表示指数的 symbol,比如上证指数 SHSE.000001, 不支持多个 symbol |
+| trade_date | string            | 交易日 (%Y-%m-%d 格式) NULL 表示最新日期                      |
+| 返回值     | GMData<DataTable> | 一个`GMData<DataTable>`对象                                   |
+```
+
+**字段：**
+
+| 字段名 | 类型   | 说明     |
+| :----- | :----- | :------- |
+| symbol | string | 标的代码 |
+| weight | double | 权重     |
+
+**示例：**
+
+```csharp
+GMData<DataTable> ds = GMApi.GetConstituents("SHSE.000001", "2017-07-10");
+```
+
+**注意：**
+
+**1.**tradeDate 中月,日均可以只输入个位数,例:`"2010-7-8"`或`"2017-7-30"`,但若对应位置为零，则`0`不可被省略
+
+## 14. 查询行业股票列表 - GetIndustry
+
+**函数原型:**
+
+```csharp
+static GMDataList<string> GetIndustry(string code)
+```
+
+**参数：**
+
+```csharp
+| 参数名 | 类型               | 说明                         |
+| :----- | :----------------- | :--------------------------- |
+| code   | string             | 行业代码                     |
+| 返回值 | GMDataList<string> | 一个`GMDataList<string>`对象 |
+```
+
+**示例：**
+
+```csharp
+#返回所有以J6开头的行业代码对应的成分股(包括:J66,J67,J68,J69的成分股)
+GMDataList<string> da = GMApi.GetIndustry("j6");
+```
+
+**注意：**
+
+**1.**在该函数中，code 参数只支持输入一个行业代码
+
+## 15. 查询交易日历 - GetTradingDates
+
+**函数原型:**
+
+```csharp
+static GMDataList<DateTime> GetTradingDates(string exchange, string startDate, string endDate)
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型                 | 说明                           |
+| :-------- | :------------------- | :----------------------------- |
+| exchange  | string               | 交易市场代码                   |
+| startDate | string               | 开始时间 (%Y-%m-%d 格式)       |
+| endDate   | string               | 结束时间 (%Y-%m-%d 格式)       |
+| 返回值    | GMDataList<DateTime> | 一个`GMDataList<DateTime>`对象 |
+```
+
+**示例：**
+
+```csharp
+GMDataList<DateTime> da = GMApi.GetTradingDates("SZSE", "2017-01-01", "2017-01-30");
+```
+
+**注意：**
+
+**1.**`exchange`参数仅支持输入单个交易所代码
+
+**2.**`startDate`和`endDate`中月,日均可以只输入个位数,<br />例:`"2010-7-8"`或`"2017-7-30"`
+
+## 16. 返回指定日期的上一个交易日 - GetPreviousTradingDate
+
+**函数原型:**
+
+```csharp
+static GMData<DateTime> GetPreviousTradingDate(string exchange, string date)
+```
+
+**参数：**
+
+```csharp
+| 参数名   | 类型             | 说明                       |
+| :------- | :--------------- | :------------------------- |
+| exchange | string           | 交易市场代码               |
+| date     | string           | 时间 (%Y-%m-%d 格式)       |
+| 返回值   | GMData<DateTime> | 一个`GMData<DateTime>`对象 |
+```
+
+**示例：**
+
+```csharp
+GMData<DateTime> dt = GMApi.GetPreviousTradingDate("SZSE", "2017-05-01");
+```
+
+**注意：**
+
+**1.**`exchange`参数仅支持输入单个交易所代码
+
+**2.**`date`中月,日均可以只输入个位数,<br />例:`'2010-7-8'`或`'2017-7-30'`
+
+## 17. 返回指定日期的下一个交易日 - GetNextTradingDate
+
+**函数原型:**
+
+```csharp
+static GMData<DateTime> GetNextTradingDate(string exchange, string date)
+```
+
+**参数：**
+
+```csharp
+| 参数名   | 类型             | 说明                       |
+| :------- | :--------------- | :------------------------- |
+| exchange | string           | 交易市场代码               |
+| date     | string           | 时间 (%Y-%m-%d 格式)       |
+| 返回值   | GMData<DateTime> | 一个`GMData<DateTime>`对象 |
+```
+
+**示例：**
+
+```csharp
+GMData<DateTime> dt = GMApi.GetNextTradingDate("SZSE", "2017-05-01");
+```
+
+**注意：**
+
+**1.**`exchange`参数仅支持输入单个交易所代码
+
+**2.**`date`中月,日均可以只输入个位数,<br />例:`"2010-7-8"`或`"2017-7-30"`
+
+## 18. 查询分红送配 - GetDividend
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetDividend(string symbol, string startDate, string endDate = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                        |
+| :-------- | :---------------- | :-------------------------- |
+| symbol    | string            | 标的代码, (必填)            |
+| startDate | string            | 开始时间 (%Y-%m-%d 格式)    |
+| endDate   | string            | 结束时间 (%Y-%m-%d 格式)    |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象 |
+```
+
+**返回字段：**
+
+| 字段名            | 类型     | 说明         |
+| :---------------- | :------- | :----------- |
+| symbol            | string   | 标的代码     |
+| cash_div          | double   | 每股派现     |
+| allotment_ratio   | double   | 每股配股比例 |
+| allotment_price   | double   | 配股价       |
+| share_div_ratio   | double   | 每股送股比例 |
+| share_trans_ratio | double   | 每股转增比例 |
+| created_at        | DateTime | 创建时间     |
+
+**示例：**
+
+```csharp
+GMData<DataTable> ds = GMApi.GetDividend("SHSE.600000", "2000-01-01", "2017-12-31");
+```
+
+**注意:**
+
+**1.**在该函数中，symbol 参数只支持输入一个标的代码
+
+**2.**`startDate`和`endDate`中月,日均可以只输入个位数,<br />例:`"2010-7-8"`或`"2017-7-30"`
+
+## 19. 获取连续合约 - GetContinuousContracts
+
+**函数原型:**
+
+```csharp
+static GMData<DataTable> GetContinuousContracts(string csymbol, string startDate = null, string endDate = null)
+```
+
+**参数：**
+
+```csharp
+| 参数名    | 类型              | 说明                                                                      |
+| :-------- | :---------------- | :------------------------------------------------------------------------ |
+| csymbol   | string            | 虚拟合约代码, 比如获取主力合约，输入 SHFE.AG;获取连续合约，输入 SHFE.AG01 |
+| startDate | string            | 开始时间 (%Y-%m-%d 格式)                                                  |
+| endDate   | string            | 结束时间 (%Y-%m-%d 格式)                                                  |
+| 返回值    | GMData<DataTable> | 一个`GMData<DataTable>`对象                                               |
+```
+
+**返回字段：**
+
+| 字段名     | 类型     | 说明     |
+| :--------- | :------- | :------- |
+| symbol     | string   | 真实合约 |
+| created_at | DateTime | 交易日   |
+
+**示例：**
+
+```csharp
+GMData<DataTable> ds = GMApi.GetContinuousContracts("SHFE.AG", "2017-07-01", "2017-08-01");
+```
+
+**注意:**
+
+**1.**在该函数中，csymbol 参数只支持输入一个标的代码
+
+**2.**`startDate`和`endDate`中月,日均可以只输入个位数,<br />例:`'2017-7-1'`或`'2017-8-1'`
