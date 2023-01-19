@@ -1,0 +1,396 @@
+# 策略编写
+
+## 1. 新建/编辑策略
+
+##### 1.不同语言的策略新建
+
+掘金量化终端支持 Python、C++、C#、Matlab 四种编程语言。
+
+您可在终端的“量化研究”板块点击页面右上角的“新建策略”，然后点击弹出页面中最左侧的编程列表选择相应的编程语言进行策略新建。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e8f6ec89cbbd.jpg)
+
+##### 2.在内置 IDE 下编辑策略
+
+掘金量化终端的内置 IDE 仅支持 Python 语言，其他语言请使用第三方 IDE 编辑。
+
+当您新建一个 Python 策略后，可直接点击“策略编辑”进入页面进行编辑。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e8f8d81a5e62.jpg)
+
+如您已关闭该页面，也可以从“我的策略”中点击相应策略进入编辑页面。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e8faa4a9c13d.jpg)
+
+在内置 IDE 中，您可以对策略内容进行修改、调试，包括修改回测参数。相关的具体操作请见：策略回测与绩效
+
+##### 3.在第三方 IDE 下编辑策略
+
+掘金量化策略 SDK 完美支持 Pycharm、Spyder 等编辑环境，您如需使用第三方 IDE 编辑策略，请参考以下步骤：
+
+1、先打开策略目录
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e8fd8a20bfca.jpg)
+
+2、在策略目录下找到策略文件 main.py
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e8ff8d9c98bc.jpg)
+
+3、再用外部 IDE 打开 main.py 文件,并配置安装有 gm sdk 的 python 解析器
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e90155194be2.jpg)
+
+##### 4.获取策略 ID
+
+策略 ID 用于终端识别策略身份，如识别不同策略发来的日志、消息、回测报表，交易信号等。您可在策略编辑页面点击右下角的设置按钮查看、复制策略 ID。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e904aebfb637.jpg)
+
+##### 5.获取 token ID
+
+token ID 用于服务端识别用户登录身份，如从服务器提取数据。
+
+如需获取，点击掘金量化终端顶部的“系统设置”即可。同时，您也可以选择重新生成 token ID，此时旧的 token ID 将失效。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e907f4f4cd5f.jpg)
+
+---
+
+## 2. 获取数据
+
+#### 1.支持范围
+
+**1.1. 交易标的**
+
+股票、期货、可转债、ETF、指数、基金
+
+**1.2. 交易市场**
+
+上交所（SHSE）、深交所（SZSE）、中金所（CFFEX）、上期所（SHFE）、大商所（DCE）、郑商所（CZCE）、上海国际能源交易中心（INE）
+
+**1.3. 数据类型**
+
+实时行情数据、历史行情数据、基本面数据。
+
+其中，实时行情数据和历史行情数据均包含 tick 行情、bar 行情。
+
+基本面数据包含财务、指数、指数成分、行业概念和交易日等数据。
+
+#### 2.数据文档
+
+**2.1. 基础数据**：https://www.myquant.cn/docs/data/98
+
+**2.2. 股票数据**：https://www.myquant.cn/docs/data/86
+
+**2.3. 期货数据**：https://www.myquant.cn/docs/data/88
+
+**2.4. 可转债数据**：https://www.myquant.cn/docs/data/705
+
+**2.5. 财务数据**：https://www.myquant.cn/docs/data/90
+
+**2.6. 指数数据**：https://www.myquant.cn/docs/data/data_index
+
+**2.7. 行业概念数据**：https://www.myquant.cn/docs/data/96
+
+**2.8. 交易日数据**：https://www.myquant.cn/docs/data/data_trade_day
+
+#### 3.获取方式
+
+**3.1. 通过订阅获取行情数据**
+
+**步骤**
+
+1、设置初始化函数: init, 使用 subscribe 函数进行数据订阅；
+
+2、实现一个函数: on_bar, 来根据数据推送进行逻辑处理；
+
+3、执行策略。
+
+**描述**
+
+预先订阅所需数据，在使用时，用对应的事件函数接收数据，数据发生更新时返回，并能够返回指定格式的时间序列滑窗数据。如：
+
+```python
+# 第一步：订阅函数（参数规格）
+subscribe(标的列表，数据频率，数据序列长度);
+
+# 第二步：接收函数标识（全局变量，指定数据返回）
+On_event (全局变量，指定数据集);
+    print (指定数据集)
+    print (全局变量)
+
+```
+
+**模式说明**
+
+返回结果跟随策略模式（关于模式会在后续详细说明）。
+
+**处理原理**
+
+1、预先将需要的数据参数，通过 subscribe 订阅接口传至服务器；
+
+2、服务器建立一个持久的订阅服务；
+
+3、当数据更新时将数据主推返回，并在本地组织成预先设定的数据格式；
+
+4、返回的数据存放在 context.data 中，并按照频率、品种、字段分类存放。
+
+**结果保存**
+
+订阅后的数据滑窗储存在 context.data 中，提取数据需要调用 context.data()接口，可以在自定义函数 algo()中调取或是在 on_xxx()事件驱动函数中调取，调取格式为：
+
+```python
+data = context.data(标的,频率,滑窗大小,字段)
+
+```
+
+**优点**
+
+\- 实时模式下，数据返回延时低；
+
+\- 回测模式下，订阅服务数据推送由本地预先取到全量历史数据按时间分段返回来模拟；
+
+\- 数据格式规整，可获取指定长度的时间序列数据。
+
+**缺点**
+
+\- 只有日频以内的行情数据支持订阅模式；
+
+\- 使用方式不如接口方式灵活，只能按固定频率向后递推。
+
+**适用场景**
+
+\- 高频次、规则行情数据的处理，在高频实时行情接收、策略回测时性能高。
+
+**示例**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+# 订阅平安银行10个长度1分钟的bar数据，然后求收盘价均值
+# 设置初始化函数, 通过订阅将需要的数据申明
+def init(context):
+    # 进行数据订阅
+    subscribe(symbols='SZSE.000001', frequency='60s', count=10)
+
+
+# 通过on_bar函数接收bar数据事件，并在该函数中求均值
+def on_bar(context,bar):
+    # 打印当前获取的bar信息
+    print(bars)
+
+    # context.data提取缓存的数据滑窗, 可用于计算指标
+    # 注意：context.data里的count要小于或等于subscribe里的count
+    data = context.data(symbols='SZSE.000001', frequency='60s', count=10, fields='close'))
+    print(data)
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-04-01 09:00:00',
+        backtest_end_time='2020-05-31 15:00:00',
+        backtest_adjust=ADJUST_NONE,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+##### 3.2. 通过接口获取数据
+
+**步骤**
+
+1、set_token 设置用户 token， 如果 token 不正确, 函数调用会抛出异常；
+
+2、调用数据查询函数， 直接进行数据查询。
+
+**描述**
+
+通过接口返回值获取数据，数据仅返回一次，如：
+
+```python
+# 数据返回=请求函数（参数规格）
+
+# 查询历史行情数据：获取指定时间段内的历史数据
+history(标的，频率，开始时间，结束时间，是否复权)
+
+# 查询基本面数据类：获取指定时间段内的历史数据
+get_fundamentals（表名，字段名，标的，开始日期，结束日期）
+
+# 查询成分股：获取指数成分股
+get_constituents（指数代码）
+
+# 查询业务数据：获取交易日期列表
+get_trading_dates（交易所，开始时间，结束时间）
+
+```
+
+**模式说明**
+
+直连服务器，无模式。
+
+**处理方式**
+
+函数、参数、直连服务器，服务器响应后将数据返回。
+
+**优点**
+
+\- 可获取的数据种类多，使用场景灵活；
+
+\- 一次性返回较大数据量；
+
+\- 可直接获取指定数据。
+
+**缺点**
+
+\- 和服务器往返交互，高频调用时对网络和服务器状态依赖大，效率不高；
+
+\- 策略历史模式运行时容易引入未来数据，导致回测失真。
+
+**适用场景**
+
+低频次，大数据量的数据获取。
+
+**示例**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+# 掘金终端需要打开，接口取数是通过网络请求的方式
+# 设置token，可在用户-密钥管理里查看获取已有token ID
+set_token('your token_id')
+
+# 查询行情快照
+current_data = current(symbols='SZSE.000001')
+
+# 查询历史行情数据，并以结构方式返回
+history_data = history(symbol='SHSE.000300', frequency='1d', start_time='2010-07-28', end_time='2017-07-30', df=True)
+
+# 查询财务数据，在股票交易衍生表中查询几个字段的值
+get_fundamentals(table='trading_derivative_indicator', symbols='SHSE.600000, SZSE.000001', start_date='2017-01-01', end_date='2017-01-01', fields='TCLOSE,PETTMNPAAEI')
+
+```
+
+##### 3.3. 使用 Jupyter Notebook 提取数据做研究
+
+**说明**
+
+jupyter notebook 是 Anaconda 集成的工具包，安装了 anaconda 后，打开 jupyter notebook 获取数据。
+
+开始前需要先确认以下三点：
+
+- 掘金终端需要打开
+
+- jupyter notebook 的 Python 解析器已安装 gm 包（前面文档有介绍怎么下载 SDK）
+
+- 已设置 token ID（<u>获取 token ID 的方法</u>）——此处连接到对应网页
+
+**步骤**
+
+1、初始化设置，获取数据的必要代码；
+
+```python
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+#终端开启 设置token
+set_token('your token')
+
+```
+
+2、设置完成，提取数据 。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e9196050cc18.png)
+
+---
+
+## 3. 策略调试
+
+通过调试策略，您可以判断策略中是否存在 bug。
+
+**步骤**
+
+1、在终端打开“我的策略”，然后选择要调试的策略；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e9273ef5154e.png)
+
+2、进入 IDE 后，点击上面工具栏的“调试”，选择“启动调试”即可。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e92ab7b09f24.png)
+
+---
+
+## 4. 克隆策略
+
+克隆策略适用于将“策略中心”的示例策略快速新建至“我的策略”中。
+
+**步骤**
+
+1、打开“量化研究”板块的“策略中心”；
+
+2、选择想要编辑的策略；
+
+3、点击克隆策略，然后在弹出页面中点击“策略编辑”即可。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e932895aa62e.jpg)
+
+---
+
+## 5. 下载策略
+
+下载策略是指将终端的示例策略下载至本地。
+
+如果您想下载某个示例策略，直接点击策略页面的“下载策略”按钮即可。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e938968defb3.jpg)
+
+---
+
+## 6. 分享策略
+
+该功能可以将您的策略、回测报告分享至掘金社区或个人中心。
+
+> 保存到个人中心将便于您下次在网页端直接分享。
+
+**步骤**
+
+1、打开终端的策略编辑界面，点击右下角分享图标；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e9403b6a7ec3.jpg)
+
+2、选择分享到哪以及要分享的回测报告，点击开始分享。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e94276341346.jpg)
+
+**如果您选择“分享到论坛”**
+
+页面将跳转到社区发帖界面，编辑框采用 markdown 语言，编辑好后直接发布。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e9446a438639.jpg)
+
+**选择“分享到个人中心”**
+
+点击“保存”策略会上传到个人中心，之后发帖时可以选择插入策略。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e94650e80e2b.jpg)
+
+选择“保存并打开个人中心”将跳转到网页的个人中心界面，您所分享的策略都会显示在这里。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3e9484bcc81da.jpg)

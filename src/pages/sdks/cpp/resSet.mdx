@@ -1,0 +1,225 @@
+# 结果集合类
+
+## 1. 类定义
+
+### DataSet 结果集
+
+DataSet 类是基本面数据查询结果的标准返回， 表示一个二维表数据存储。类声明如下:
+
+```cpp
+class DataSet
+{
+public:
+	//获取api调用结果, 0: 成功， 非0: 错误码
+	virtual int status() = 0;
+
+	//判断是否已经是到达结果集末尾
+	virtual bool is_end() = 0;
+
+	//移到下一条记录
+	virtual void next() = 0;
+
+	//获取整型值
+	virtual int get_integer(const char *key) = 0;
+
+	//获取长整型值
+	virtual long long get_long_integer(const char *key) = 0;
+
+	//获取浮点型值
+	virtual double get_real(const char *key) = 0;
+
+	//获取字符串型值
+	virtual const char* get_string(const char *key) = 0;
+
+	//释放数据集合
+	virtual void release() = 0;
+
+	//打印数据
+	virtual const char* debug_string() = 0;
+};
+
+```
+
+典型的使用场景如下：
+
+1. 调用数据查询函数返回一个 DataSet 对象指针 DataSet \*ds;
+2. 调用`ds->status()` 判断函数调用是否成功，0 表示成功，非 0 表示错误码，调用失败，结果集为空。
+3. 如果`ds->status()`返回成功，调用`ds->is_end()` 与 `ds->next()` 遍历结果集取值。
+4. 调用`ds->release()` 释放结果集。
+
+`debug_string` 用于返回整个结果集内容， 包含字段和值， 一般用于开发调试， 快速知晓结果集的表结构。
+
+### 使用举例
+
+```cpp
+//获取深交所最新的代码信息
+DataSet* jy = get_instruments("SZSE");
+
+if (jy->status() == 0)
+{
+	//调用get_instruments成功， 以下遍历结果集
+
+	while (!jy->is_end())  //先要判断是否已经到达结果集末尾
+	{
+
+		cout << jy->get_string("symbol") << endl;       //取字符串值
+		cout << jy->get_integer("sec_level") << endl;   //取整型值
+		cout << jy->get_real("pre_close") << endl;      //取浮点值
+
+		jy->next(); //移动到下一条记录
+	}
+}
+else
+{
+	// 调用get_instruments 失败，  jy->status() 为错误码
+	cout << "get_instruments error: " << jy->status() << endl;
+}
+
+// 使用完结果集要释放
+jy->release();
+
+```
+
+---
+
+## 2. 成员函数
+
+### status 获取函数调用结果
+
+获得结果集之后， 第一步都应该先调用本成员函数判断查询数据是否成功。
+
+**函数原型:**
+
+```cpp
+int status()
+```
+
+**参数：**
+
+| 参数名 | 类型 | 说明                   |
+| :----- | :--- | :--------------------- |
+| 返回值 | int  | 0: 成功， 非 0: 错误码 |
+
+**注意：**
+
+**1.** 如果 status 断定为失败时， 不应该再遍历结果集， 这时直接释放结果集即可。
+
+### is_end 判断是否到达结果集末尾
+
+获得结果集之后， 默认指向结果集的第一条记录。如果 is_end 返回 true, 则表示没有指向有效的记录了， 遍历应该就此结束。
+
+**函数原型:**
+
+```cpp
+bool is_end()
+```
+
+**参数：**
+
+| 参数名 | 类型 | 说明                                                                     |
+| :----- | :--- | :----------------------------------------------------------------------- |
+| 返回值 | bool | true: 已到结果集末尾，当前记录无效， false: 未到结果集末尾，当前记录有效 |
+
+### next 移到下一条记录
+
+移到下一条记录， 先用 is_end 判断记录是否有效，再取值。
+
+**函数原型:**
+
+```cpp
+void next()
+```
+
+### get_integer 获取整型值
+
+如果当前记录有效， 则可取值
+
+**函数原型:**
+
+```cpp
+int get_integer(const char *key)
+```
+
+**参数：**
+
+| 参数名 | 类型          | 说明         |
+| :----- | :------------ | :----------- |
+| key    | const char \* | 字段名       |
+| 返回值 | int           | 所取的字段值 |
+
+### get_long_integer 获取长整型值
+
+如果当前记录有效， 则可取值
+
+**函数原型:**
+
+```cpp
+long long get_long_integer(const char *key)
+```
+
+**参数：**
+
+| 参数名 | 类型          | 说明         |
+| :----- | :------------ | :----------- |
+| key    | const char \* | 字段名       |
+| 返回值 | long long     | 所取的字段值 |
+
+### get_real 获取浮点型值
+
+如果当前记录有效， 则可取值
+
+**函数原型:**
+
+```cpp
+double get_real(const char *key)
+```
+
+**参数：**
+
+| 参数名 | 类型          | 说明         |
+| :----- | :------------ | :----------- |
+| key    | const char \* | 字段名       |
+| 返回值 | double        | 所取的字段值 |
+
+### get_string 获取字符串值
+
+如果当前记录有效， 则可取值
+
+**函数原型:**
+
+```cpp
+const char* get_string(const char *key);
+```
+
+**参数：**
+
+| 参数名 | 类型          | 说明         |
+| :----- | :------------ | :----------- |
+| key    | const char \* | 字段名       |
+| 返回值 | const char\*  | 所取的字段值 |
+
+### release 释放数据集合
+
+获取 DataSet 指针之后，最后都应该释放数据集合(不管 status 是什么状态)， 不然会造成内存泄露。调用 release 之后，不能再调用结果集任何成员函数。
+
+**函数原型:**
+
+```cpp
+void release()
+```
+
+### debug_string 返回整个结果集信息
+
+使用调试，快速知道结果集的表结构
+
+**函数原型:**
+
+```cpp
+const char* debug_string();
+```
+
+**参数：**
+
+| 参数名 | 类型         | 说明           |
+| :----- | :----------- | :------------- |
+| 返回值 | const char\* | 整个结果集信息 |

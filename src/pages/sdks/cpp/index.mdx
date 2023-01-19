@@ -1,0 +1,676 @@
+import { HeroPattern } from '@/components/HeroPattern'
+
+<HeroPattern />
+
+# 快速开始
+
+## 1. 指引
+
+### 快速新建策略
+
+- 打开终端后，登陆掘金账号点击研究策略，新建策略
+  或者点击右上角新建策略
+  ![](http://www.myquant.cn/uploads/201807/attach_15461053a3d4c463.png)
+
+- 新建一个典型默认账号交易策略
+  新建 C++的默认账号交易策略
+  ![](http://www.myquant.cn/uploads/201807/attach_154610df10843d79.png)
+
+### 编译策略
+
+- 打开新建策略文件目录
+  策略文件目录内容可以拷贝到本地其他盘符也可以进行编译生成
+  ![](http://www.myquant.cn/uploads/201807/attach_15461252cf06d06b.png)
+- 策略文件说明：
+  gmskd： sdk 目录
+  Stretegy：策略源码目录
+  readme.txt 说明文件
+  ![](http://www.myquant.cn/uploads/201807/attach_1546126680e8a58c.png)
+- 打开工程文件 sln 文件
+  需要用 visual studio 打开工程文件
+  ![](http://www.myquant.cn/uploads/201807/attach_15461275ab2f052f.png)
+- 编写策略
+  打开 main.c 文件，可进行策略编辑
+  ![](http://www.myquant.cn/uploads/201807/attach_154612859ff1a908.png)
+  编译并运行策略
+  ![](http://www.myquant.cn/uploads/201807/attach_15461293f62f2fda.png)
+- 查看运行结果
+  掘金客户端中关闭新建策略窗口并打开回测结果列表
+  ![](http://www.myquant.cn/uploads/201807/attach_154612bad4c2af25.png)
+  查看回测结果
+  ![](http://www.myquant.cn/uploads/201807/attach_154612c1d1821b90.png)
+  回测相关数据指标
+  ![](http://www.myquant.cn/uploads/201807/attach_154612c943c6b8ca.png)
+
+### 策略框架应该是这样的
+
+- 继承策略基类
+- 重改关注事件
+- 在 on_init 里订阅行情，初始化
+- 在 main 里实例化一个派生类对像
+- 设置 token,策略 id,和 mode
+- 开始运行
+
+### 继承策略基类
+
+```cpp
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+private:
+};
+```
+
+### 重改关注事件
+
+```cpp
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+
+		return;
+	}
+private:
+};
+```
+
+### 在 on_init 里订阅行情，初始化
+
+```cpp
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		subscribe("SHSE.600000", "tick");
+		return;
+	}
+private:
+};
+```
+
+### 在 main 里实例化一个派生类对像
+
+```cpp
+MyStrategy s;
+```
+
+### 设置 token,策略 id,和 mode
+
+1. 获取 token：打开客户端->点击右上角用户头像 -> 系统设置 -> 复制 token
+2. 获取策略 id：打开客户端->策略研究->右上角新建策略->新建 C/C++策略->复制策略 ID
+3. 策略模式：
+   MODE_LIVE(实时)=1
+   MODE_BACKTEST(回测)=2
+
+```cpp
+//设置策略id
+s.set_strategy_id("strategy_id");
+//设置token
+s.set_token("token");
+//设置回测模式
+s.set_mode(MODE_BACKTEST);
+//回测模式相关设置
+s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00", 1000000, 1, 0, 0, 0, 1);
+```
+
+### 开始运行
+
+```cpp
+s.run();
+```
+
+### 订阅行情策略示例
+
+#### 源文件
+
+```cpp
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		//订阅行情数据
+		subscribe("SHSE.600000", "tick");
+
+		return;
+	}
+
+   //接收tick行情事件
+   void on_tick(Tick *tick)
+   {
+      cout<< "代码                            " << tick->symbol << endl
+         << "utc时间,精确到毫秒                " << tick->created_at << endl
+         << "最新价                           " << tick->price << endl
+         << "开盘价                           " << tick->open << endl
+         << "最高价                           " << tick->high << endl
+         << "最低价                           " << tick->low << endl
+         << "成交总量                         " << tick->cum_volume << endl
+         << "成交总金额 / 最新成交额, 累计值     " << tick->cum_amount << endl
+         << "合约持仓量(期), 累计值             " << tick->cum_position << endl
+         << "瞬时成交额                        " << tick->last_amount << endl
+         << "瞬时成交量                        " << tick->last_volume << endl
+         << "保留)交易类型, 对应多开, 多平等类型 " << tick->trade_type << endl
+         << "报价                             " << tick->quotes << endl;
+   }
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("07ea5d21-59ab-11e8-83bf-94c69161828a");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2017-07-11 14:20:00", "2017-07-11 15:30:00",
+		1000000, 1, 0, 0, 0, 1);
+	s.run();
+	cout << "回测完成！" << endl;
+	getchar();
+	return 0;
+}
+```
+
+---
+
+## 2. 典型场景
+
+### 空策略
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//空策略
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		//订阅行情数据
+		subscribe("SHSE.600000", "tick");
+
+		return;
+	}
+
+	//接收tick行情事件
+   void on_tick(Tick *tick)
+   {
+      cout << "代码                            " << tick->symbol << endl
+         << "utc时间，精确到毫秒                " << tick->created_at << endl
+         << "最新价                            " << tick->price << endl
+         << "开盘价                            " << tick->open << endl
+         << "最高价                            " << tick->high << endl
+         << "最低价                            " << tick->low << endl
+         << "成交总量                          " << tick->cum_volume << endl
+         << "成交总金额 / 最新成交额, 累计值      " << tick->cum_amount << endl
+         << "合约持仓量(期), 累计值              " << tick->cum_position << endl
+         << "瞬时成交额                         " << tick->last_amount << endl
+         << "瞬时成交量                         " << tick->last_volume << endl
+         << "保留)交易类型, 对应多开, 多平等类型  " << tick->trade_type << endl
+         << "报价                              " << tick->quotes << endl;
+   }
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("07ea5d21-59ab-11e8-83bf-94c69161828a");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2017-07-11 14:20:00", "2017-07-11 15:30:00",1000000, 1, 0, 0, 0, 1);
+	s.run();
+	cout << "回测完成！" << endl;
+	getchar();
+	return 0;
+}
+```
+
+### 定时任务
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//定时任务
+//策略描述：
+//典型如选股交易。比如，策略每日收盘前10分钟执行：选股->决策逻辑->交易->退出。可能无需订阅实时数据。
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+
+		//设置定时任务
+		schedule("1d","13:24:00");
+		return;
+	}
+
+	//定时任务触发事件
+	void on_schedule(const char *data_rule, const char *time_rule)
+	{
+		//购买200股浦发银行股票
+		Order o = order_volume("SHSE.600000", 200, 1, 2, 1, 0);
+	}
+
+	//回测完成事件
+	void on_backtest_finished()
+	{
+		cout << "on_backtest_finished" << endl;
+	}
+
+	//回测完成后收到绩效报告
+	void on_indicator(Indicator *indicator)
+	{
+		cout << "on_indicator" << endl
+			<< "账号ID:       "  << indicator->account_id        << endl
+			<< "累计收益率:    "  << indicator->pnl_ratio         << endl
+			<< "年化收益率:    "  << indicator->pnl_ratio_annual  << endl
+			<< "夏普比率:      "  << indicator->sharp_ratio       << endl
+			<< "最大回撤:      "  << indicator->max_drawdown      << endl
+			<< "风险比率:      "  << indicator->risk_ratio        << endl
+			<< "开仓次数:      "  << indicator->open_count        << endl
+			<< "平仓次数:      "  << indicator->close_count       << endl
+			<< "盈利次数:      "  << indicator->win_count         << endl
+			<< "亏损次数:      "  << indicator->lose_count        << endl
+			<< "胜率:         "  << indicator->win_ratio         << endl
+			<< "指标创建时间:  "  << indicator->created_at        << endl
+			<< "指标变更时间:  "  << indicator->updated_at        << endl;
+	}
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("4727c864-84da-11e8-81b2-7085c223669d");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00",1000000, 1, 0, 0, 0, 1);
+	s.run();
+
+	return 0;
+}
+```
+
+### 数据事件驱动
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//数据事件驱动
+//策略描述：
+//典型如选股交易策略。比如，策略每日收盘前10分钟执行：选股->决策逻辑->交易->退出。可能无需订阅实时数据
+
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+
+		//订阅浦发银行, bar频率为一天
+		subscribe("SHSE.600000", "1d");
+
+		return;
+	}
+
+	void on_bar(Bar *bar)
+	{
+		cout << "代码:           "   <<   bar->symbol       << endl
+			<< "bar的开始时间:    "   <<   bar->bob          << endl
+			<< "bar的结束时间:    "   <<   bar->eob          << endl
+			<< "开盘价:          "   <<   bar->open         << endl
+			<< "收盘价:          "   <<   bar->close        << endl
+			<< "最高价:          "   <<   bar->high         << endl
+			<< "最低价:          "   <<   bar->low          << endl
+			<< "成交量:          "   <<   bar->volume       << endl
+			<< "成交金额:        "   <<   bar->amount       << endl
+			<< "前收盘价:        "   <<   bar->pre_close    << endl
+			<< "持仓量:          "   <<   bar->position     << endl
+			<< "bar频度:         "   <<   bar->frequency    << endl;
+	}
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("07ea5d21-59ab-11e8-83bf-94c69161828a");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00",1000000, 1, 0, 0, 0, 1);
+	s.run();
+	return 0;
+}
+```
+
+### 默认交易账号
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//默认账号交易
+//策略描述：
+//默认账号进行交易，下单时不指定account
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		subscribe("SHSE.600000,SZSE.000001", "1d");
+
+		return;
+	}
+
+	void on_bar(Bar *bar)
+	{
+		//不指定account 使用默认账户下单
+		order_volume(bar->symbol, 200, 1, 2, 1, 0);
+	}
+
+	//回测完成事件
+	void on_backtest_finished()
+	{
+		cout << "on_backtest_finished" << endl;
+	}
+
+	//回测完成后收到绩效报告
+	void on_indicator(Indicator *indicator)
+	{
+		cout << "on_indicator" << endl
+			<< "账号ID:       " << indicator->account_id << endl
+			<< "累计收益率:   " << indicator->pnl_ratio << endl
+			<< "年化收益率:   " << indicator->pnl_ratio_annual << endl
+			<< "夏普比率:     " << indicator->sharp_ratio << endl
+			<< "最大回撤:     " << indicator->max_drawdown << endl
+			<< "风险比率:     " << indicator->risk_ratio << endl
+			<< "开仓次数:     " << indicator->open_count << endl
+			<< "平仓次数:     " << indicator->close_count << endl
+			<< "盈利次数:     " << indicator->win_count << endl
+			<< "亏损次数:     " << indicator->lose_count << endl
+			<< "胜率:         " << indicator->win_ratio << endl
+			<< "指标创建时间:  " << indicator->created_at << endl
+			<< "指标变更时间:  " << indicator->updated_at << endl;
+	}
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("ba8785aa-8641-11e8-98cb-7085c223669d");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00",1000000, 1, 0, 0, 0, 1);
+	s.run();
+	return 0;
+}
+```
+
+### 显示指定交易账号
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//显示指定交易账号
+//策略描述：
+//下单时指定交易账号，account参数传账号id或者账号标题
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		subscribe("SHSE.600000,SZSE.000001", "1d");
+
+		return;
+	}
+
+	void on_bar(Bar *bar)
+	{
+		//不指定account 使用默认账户下单
+		order_volume(bar->symbol, 200, 1, 2, 1, 0, "ba8785aa-8641-11e8-98cb-7085c223669d");
+	}
+
+	//回测完成事件
+	void on_backtest_finished()
+	{
+		cout << "on_backtest_finished" << endl;
+	}
+
+	//回测完成后收到绩效报告
+	void on_indicator(Indicator *indicator)
+	{
+		cout << "on_indicator" << endl
+			<< "账号ID:       " << indicator->account_id << endl
+			<< "累计收益率:   " << indicator->pnl_ratio << endl
+			<< "年化收益率:   " << indicator->pnl_ratio_annual << endl
+			<< "夏普比率:     " << indicator->sharp_ratio << endl
+			<< "最大回撤:     " << indicator->max_drawdown << endl
+			<< "风险比率:     " << indicator->risk_ratio << endl
+			<< "开仓次数:     " << indicator->open_count << endl
+			<< "平仓次数:     " << indicator->close_count << endl
+			<< "盈利次数:     " << indicator->win_count << endl
+			<< "亏损次数:     " << indicator->lose_count << endl
+			<< "胜率:         " << indicator->win_ratio << endl
+			<< "指标创建时间: " << indicator->created_at << endl
+			<< "指标变更时间: " << indicator->updated_at << endl;
+	}
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("ba8785aa-8641-11e8-98cb-7085c223669d");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00",1000000, 1, 0, 0, 0, 1);
+	s.run();
+	return 0;
+}
+```
+
+### 模式选择
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//模式选择
+//策略描述：
+//策略支持两种运行模式，实时模式和回测模式，用户需要在运行策略时选择模式，执行run函数时mode=1 表示回测模式，mode=0表示实时模式
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+		subscribe("SHSE.600000", "tick");
+
+		return;
+	}
+
+	void on_tick(Tick *tick)
+	{
+		cout << "代码:                       " << tick->symbol << endl
+			<< "utc时间，精确到毫秒:           " << tick->created_at << endl
+			<< "最新价:                      " << tick->price << endl
+			<< "开盘价:                      " << tick->open << endl
+			<< "最高价:                      " << tick->high << endl
+			<< "最低价:                      " << tick->low << endl
+			<< "成交总量                      " << tick->cum_volume << endl
+			<< "成交总金额/最新成交额,累计值:   " << tick->cum_amount << endl
+			<< "合约持仓量(期),累计值:         " << tick->cum_position << endl
+			<< "瞬时成交额:                   " << tick->last_amount << endl
+			<< "瞬时成交量:                   " << tick->last_volume << endl
+			<< "交易类型,对应多开,多平等类型:   " << tick->trade_type << endl;
+	}
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("ba8785aa-8641-11e8-98cb-7085c223669d");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	// mode = MODE_LIVE 实时模式
+	// mode = MODE_BACKTEST  回测模式, 指定回测开始时间backtest_start_time和结束时间backtest_end_time
+	//s.set_backtest_config("2016-07-11 17:20:00", "2017-07-11 17:30:00",1000000, 1, 0, 0, 0, 1);
+
+	s.set_mode(MODE_LIVE);
+
+	s.run();
+	return 0;
+}
+```
+
+### 数据研究
+
+```cpp
+//////////////////////////////////////////////////////////////////////////
+//数据研究
+//策略描述：
+//无需实时数据驱动策略，无需交易下单，只是取数据的场景
+
+#include <iostream>
+#include "strategy.h"
+
+using namespace std;
+
+class MyStrategy :public Strategy
+{
+public:
+	MyStrategy() {}
+	~MyStrategy(){}
+
+	//重写on_init事件，进行策略开发
+	void on_init()
+	{
+		cout << "on_init" << endl;
+
+		DataArray<Tick>* ht = history_ticks("SZSE.000002", "2017-07-11 10:20:00", "2017-07-11 10:30:00");
+		if (ht->status() == 0)
+		{
+			for (int i = 0; i < ht->count(); i++)
+			{
+				cout << "代码:                              " << ht->at(i).symbol << endl
+					<< "utc时间，精确到毫秒:                  " << ht->at(i).created_at << endl
+					<< "最新价:                              " << ht->at(i).price << endl
+					<< "开盘价:                              " << ht->at(i).open << endl
+					<< "最高价:                              " << ht->at(i).high << endl
+					<< "最低价:                              " << ht->at(i).low << endl
+					<< "成交总量:                            " << ht->at(i).cum_volume << endl
+					<< "成交总金额 / 最新成交额, 累计值:        " << ht->at(i).cum_amount << endl
+					<< "合约持仓量(期), 累计值:                " << ht->at(i).cum_position << endl
+					<< "瞬时成交额:                           " << ht->at(i).last_amount << endl
+					<< "瞬时成交量:                           " << ht->at(i).last_volume << endl
+					<< "保留)交易类型, 对应多开, 多平等类型:    " << ht->at(i).trade_type << endl
+					<< "报价:                                " << ht->at(i).quotes << endl;
+			}
+		}
+
+		return;
+	}
+
+private:
+};
+
+int main(int argc, char *argv[])
+{
+	MyStrategy s;
+	s.set_strategy_id("ba8785aa-8641-11e8-98cb-7085c223669d");
+	s.set_token("39624b0f1916ae0b2a4cb1f2d13704368badf576");
+	s.set_mode(MODE_BACKTEST);
+	s.set_backtest_config("2017-07-11 10:20:00", "2017-07-11 10:30:00",1000000, 1, 0, 0, 0, 1);
+
+	s.run();
+	return 0;
+}
+```

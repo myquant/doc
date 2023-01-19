@@ -1,0 +1,1176 @@
+import { HeroPattern } from '@/components/HeroPattern'
+
+<HeroPattern />
+
+# 股票
+
+## 1. 基础数据
+
+目前，掘金量化支持上交所和深交所的股票交易标的查询以及从 2005-01-01 以来的交易日历。
+
+市场包括：
+
+| **市场中文名** | **市场代码** |
+| -------------- | ------------ |
+| 上交所         | SHSE         |
+| 深交所         | SZSE         |
+
+##### **Python 数据接口**
+
+1. [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E5%AF%B9%E5%BA%94%E7%9A%84%E6%95%B0%E6%8D%AE-,getinstrumentinfos%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF,-%E8%8E%B7%E5%8F%96%E5%88%B0%E4%BA%A4%E6%98%93)，由此获取的信息与时间无关
+2. [get_instruments - 查询最新交易标的信息](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E7%9B%B4%E6%8E%A5%E6%8A%A5%E9%94%99-,getinstruments%20%2D%20%E6%9F%A5%E8%AF%A2%E6%9C%80%E6%96%B0%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E4%BF%A1%E6%81%AF,-%E6%9F%A5%E8%AF%A2%E6%9C%80%E6%96%B0%E4%BA%A4%E6%98%93)，可获取基本数据及最新日频数据
+3. [get_history_instruments - 查询交易标的历史信息数据](https://www.myquant.cn/docs/python/python_select_api.html#gethistoryinstruments%20-%20%E6%97%A5%E6%8C%87%E6%A0%87%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2:~:text=%E8%BD%AC%E8%82%A1%E4%BB%B7%EF%BC%89*%E8%82%A1%E4%BB%B7-,gethistoryinstruments%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%A0%87%E7%9A%84%E5%8E%86%E5%8F%B2%E4%BF%A1%E6%81%AF%E6%95%B0%E6%8D%AE,-%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9Asymbols)，可返回指定 symbols 的标的日频历史数据
+4. [get_trading_dates - 查询交易日列表](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,gettradingdates%20%2D%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，可查询从 2005-01-01 以来的交易日历
+5. [get_previous_trading_date - 查询指定日期的上一交易日](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,getprevioustradingdate%20%2D%20%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9A%E6%97%A5%E6%9C%9F%E7%9A%84%E4%B8%8A%E4%B8%80%E4%B8%AA%E4%BA%A4%E6%98%93%E6%97%A5,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，返回指定日期的上一个交易日字符串(%Y-%m-%d 格式)
+6. [get_next_trading_date - 查询指定日期的下一个交易日](https://www.myquant.cn/docs/python/python_select_api.html#gettradingdates%20-%20%E6%9F%A5%E8%AF%A2%E4%BA%A4%E6%98%93%E6%97%A5%E5%88%97%E8%A1%A8:~:text=2017%2D7%2D30%27-,getnexttradingdate%20%2D%20%E8%BF%94%E5%9B%9E%E6%8C%87%E5%AE%9A%E6%97%A5%E6%9C%9F%E7%9A%84%E4%B8%8B%E4%B8%80%E4%B8%AA%E4%BA%A4%E6%98%93%E6%97%A5,-%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B%3A)，返回指定日期的下一个交易日字符串 (%Y-%m-%d 格式)
+
+**示例 1**
+
+获取`SHSE.600000`的基本信息：
+
+```python
+get_instrumentinfos(symbols=['SHSE.600000'],df=False)
+```
+
+返回结果：
+
+```python
+[{'exchange': 'SHSE', 'conversion_start_date': None, 'conversion_price': 0.0, 'listed_date': datetime.datetime(1999, 11, 10, 0, 0, tzinfo=tzfile('PRC')), 'sec_abbr': 'pfyx', 'price_tick': 0.01, 'delisted_date': datetime.datetime(2038, 1, 1, 0, 0, tzinfo=tzfile('PRC')), 'symbol': 'SHSE.600000', 'sec_id': '600000', 'underlying_symbol': '', 'trade_n': 1, 'sec_type': 1, 'sec_name': '浦发银行'}]
+```
+
+**示例 2**
+
+获取`SHSE.600000`的基本数据及最新日频数据：
+
+```python
+get_instruments(symbols='SHSE.600000', df=False)
+```
+
+返回结果：
+
+```python
+[{'pre_close': 8.479999542236328, 'margin_ratio': 1.0, 'adj_factor': 14.0925518768063, 'position': 0, 'settle_price': 0.0, 'symbol': 'SHSE.600000', 'upper_limit': 9.33, 'multiplier': 1.0, 'is_suspended': 0, 'sec_level': 1, 'lower_limit': 7.63, 'trade_date': datetime.datetime(2021, 11, 11, 0, 0, tzinfo=tzfile('PRC')), 'sec_type': 1, 'delisted_date': datetime.datetime(2038, 1, 1, 0, 0, tzinfo=tzfile('PRC')), 'exchange': 'SHSE', 'underlying_symbol': '', 'sec_abbr': 'pfyx', 'conversion_price': 0.0, 'sec_id': '600000', 'trade_n': 1, 'price_tick': 0.01, 'sec_name': '浦发银行', 'listed_date': datetime.datetime(1999, 11, 10, 0, 0, tzinfo=tzfile('PRC')), 'conversion_start_date': None}]
+```
+
+**示例 3**
+
+获取`SHSE.600000`的历史信息数据：
+
+```python
+get_history_instruments(symbols='SHSE.600000', start_date='2017-09-19', end_date='2017-09-19', df=False)
+```
+
+返回结果：
+
+```python
+[{'symbol': 'SHSE.600000', 'sec_level': 1, 'multiplier': 1.0, 'margin_ratio': 1.0, 'pre_close': 12.90999984741211, 'upper_limit': 14.2, 'lower_limit': 11.62, 'adj_factor': 12.2102441895126, 'is_suspended': 0, 'settle_price': 0.0, 'position': 0, 'pre_settle': 0.0, 'strike_price': 0.0, 'trade_date': datetime.datetime(2017, 9, 19, 0, 0, tzinfo=tzfile('PRC'))}, {'symbol': 'SHSE.600009', 'sec_level': 1, 'multiplier': 1.0, 'margin_ratio': 1.0, 'pre_close': 39.90999984741211, 'upper_limit': 43.9, 'lower_limit': 35.92, 'adj_factor': 2.9874577428614, 'is_suspended': 0, 'settle_price': 0.0, 'position': 0, 'pre_settle': 0.0, 'strike_price': 0.0, 'trade_date': datetime.datetime(2017, 9, 19, 0, 0, tzinfo=tzfile('PRC'))}]
+```
+
+**示例 4**
+
+查询深交所 2017-01-01 -- 2017-01-30 的交易日：
+
+```python
+get_trading_dates(exchange='SZSE', start_date='2017-01-01', end_date='2017-01-30')
+```
+
+返回结果：
+
+```python
+['2017-01-03', '2017-01-04', '2017-01-05', '2017-01-06', '2017-01-09', '2017-01-10', '2017-01-11', '2017-01-12', '2017-01-13', '2017-01-16', '2017-01-17', '2017-01-18', '2017-01-19', '2017-01-20', '2017-01-23', '2017-01-24', '2017-01-25', '2017-01-26']
+```
+
+**示例 5**
+
+查询深交所 2017-05-01 的上个交易日的时间：
+
+```python
+get_previous_trading_date(exchange='SZSE', date='2017-05-01')
+```
+
+返回结果：
+
+```python
+'2017-04-28'
+```
+
+**示例 6**
+
+查询深交所 2017-05-01 的下个交易日的时间：
+
+```python
+get_next_trading_date(exchange='SZSE', date='2017-05-01')
+```
+
+返回结果：
+
+```python
+'2017-05-02'
+```
+
+##### **其他语言数据接口**
+
+**C#**
+
+- [GetInstrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#9fd433e7783cb875)
+- [GetInstruments - 查询最新交易标的信息](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#eb60bf5c2d2e951c)
+- [GetHistoryInstruments - 查询交易标的历史数据](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#c739633b97ce8f68)
+- [GetTradingDates - 查询交易日历](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#ef110c18af83a72a)
+- [GetPreviousTradingDate - 返回指定日期的上一个交易日](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#1c954f23e350bfc1)
+- [GetNextTradingDate - 返回指定日期的下一个交易日](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#37e4b11f820f5632)
+
+**C++**
+
+- [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/cpp/global-func.md#6bc9d974f0f1a1b6)
+- [get_instruments - 查询最新交易标的信息](https://www.myquant.cn/docs/cpp/global-func.md#8ba2064987fb1d1f)
+- [get_history_instruments - 查询交易标的历史数据](https://www.myquant.cn/docs/cpp/global-func.md#8f28e1de81b80633)
+- [get_trading_dates - 查询交易日历](https://www.myquant.cn/docs/cpp/global-func.md#bc2ed330883fa3ca)
+- [get_previous_trading_date - 返回指定日期的上一个交易日](https://www.myquant.cn/docs/cpp/global-func.md#9554e0c0d93dae12)
+- [get_next_trading_date - 返回指定日期的下一个交易日](https://www.myquant.cn/docs/cpp/global-func.md#38acd02099e505c9)
+
+**MATLAB**
+
+- [get_instrumentinfos - 查询交易标的基本信息](https://www.myquant.cn/docs/matlab/305.html#6bc9d974f0f1a1b6)
+- [get_instruments - 查询最新交易标的最新基本信息](https://www.myquant.cn/docs/matlab/305.html#4abb5e188912e1e4)
+- [get_history_instruments - 查询交易标的历史基本信息](https://www.myquant.cn/docs/matlab/305.html#958bc6fcdaecf611)
+- [get_trading_dates - 查询交易日历表](https://www.myquant.cn/docs/matlab/305.html#4ad239836cf8934a)
+- [get_previous_trading_date - 查询上一个交易日](https://www.myquant.cn/docs/matlab/305.html#0f4f28fe6c40386f)
+- [get_next_trading_date - 查询下一个交易日](https://www.myquant.cn/docs/matlab/305.html#752bcf0eec43fc1e)
+
+---
+
+## 2. 行情数据
+
+### 实时行情数据
+
+掘金量化目前支持获取国内两个市场的股票实时行情数据。
+
+包含 Tick 行情和 Bar 行情。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+##### **Tick - Tick 行情**
+
+逐笔交易行情, 包含以下内容：
+
+| 参数名       | 类型              | 说明                                                                                            |
+| :----------- | :---------------- | :---------------------------------------------------------------------------------------------- |
+| symbol       | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol)                      |
+| open         | float             | 开盘价                                                                                          |
+| high         | float             | 最高价                                                                                          |
+| low          | float             | 最低价                                                                                          |
+| price        | float             | 最新价                                                                                          |
+| cum_volume   | int               | 成交总量/最新成交量,累计值                                                                      |
+| cum_amount   | float             | 成交总金额/最新成交额,累计值                                                                    |
+| trade_type   | int               | 交易类型 1: ‘双开’, 2: ‘双平’, 3: ‘多开’, 4: ‘空开’, 5: ‘空平’, 6: ‘多平’, 7: ‘多换’, 8: ‘空换’ |
+| last_volume  | int               | 瞬时成交量                                                                                      |
+| cum_position | int               | 合约持仓量(期),累计值（股票此值为 0）                                                           |
+| last_amount  | float             | 瞬时成交额 (郑商所 last_amount 为 0)                                                            |
+| created_at   | datetime.datetime | 创建时间                                                                                        |
+| quotes       | list[quote]       | 股票提供买卖 1-5 档,list[0]~list[4]分别对应买卖一档到五档；跌停时无买方报价，涨停时无卖方报价   |
+
+##### Quote - 报价(dict)
+
+| 参数名 | 类型  | 说明 |
+| :----- | :---- | :--- |
+| bid_p  | float | 买价 |
+| bid_v  | int   | 买量 |
+| ask_p  | float | 卖价 |
+| ask_v  | int   | 卖量 |
+
+##### Bar - Bar 行情
+
+支持以下多种频率的股票实时行情数据：
+
+| 交易所名称 | 市场代码 | 数据频率                           |
+| :--------- | :------- | :--------------------------------- |
+| 上交所     | SHSE     | 30s, 60s, 300s, 900s, 1800s, 3600s |
+| 深交所     | SZSE     | 30s, 60s, 300s, 900s, 1800s, 3600s |
+
+> 注：s 表示“秒”。
+
+行情包含以下数据:
+
+| 参数名    | 类型              | 说明                                                                       |
+| :-------- | :---------------- | :------------------------------------------------------------------------- |
+| symbol    | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol) |
+| frequency | str               | 频率                                                                       |
+| open      | float             | 开盘价                                                                     |
+| close     | float             | 收盘价                                                                     |
+| high      | float             | 最高价                                                                     |
+| low       | float             | 最低价                                                                     |
+| amount    | float             | 成交额                                                                     |
+| volume    | int               | 成交量                                                                     |
+| bob       | datetime.datetime | bar 开始时间                                                               |
+| eob       | datetime.datetime | bar 结束时间                                                               |
+
+### 历史行情数据
+
+掘金量化目前支持获取国内两个市场的股票历史行情数据。
+
+包含 Tick 行情和 Bar 行情，支持前复权和后复权以及不复权。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+##### Tick - Tick 行情
+
+时间范围：最近三个月内
+
+逐笔交易行情，包含以下内容：
+
+| 参数名       | 类型              | 说明                                                                                            |
+| :----------- | :---------------- | :---------------------------------------------------------------------------------------------- |
+| symbol       | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol)                      |
+| open         | float             | 开盘价                                                                                          |
+| high         | float             | 最高价                                                                                          |
+| low          | float             | 最低价                                                                                          |
+| price        | float             | 最新价                                                                                          |
+| cum_volume   | int               | 成交总量/最新成交量,累计值                                                                      |
+| cum_amount   | float             | 成交总金额/最新成交额,累计值                                                                    |
+| trade_type   | int               | 交易类型 1：‘双开’, 2：‘双平’, 3：‘多开’, 4：‘空开’, 5：‘空平’, 6：‘多平’, 7：‘多换’, 8：‘空换’ |
+| last_volume  | int               | 瞬时成交量                                                                                      |
+| cum_position | int               | 合约持仓量(期),累计值(股票该值为 0)                                                             |
+| last_amount  | float             | 瞬时成交额（郑商所 last_amount 为 0）                                                           |
+| created_at   | datetime.datetime | 创建时间                                                                                        |
+| quotes       | list[quote]       | 股票提供买卖 1-5 档,list[0]~list[4]分别对应买卖一档到五档；跌停时无买方报价，涨停时无卖方报价   |
+
+##### Quote - 报价(dict)
+
+| 参数名 | 类型  | 说明 |
+| :----- | :---- | :--- |
+| bid_p  | float | 买价 |
+| bid_v  | int   | 买量 |
+| ask_p  | float | 卖价 |
+| ask_v  | int   | 卖量 |
+
+##### Bar - Bar 行情
+
+支持以下多种频率的股票历史行情数据：
+
+| 交易所名称 | 市场代码 | 频率以及数据范围                                                                 |
+| :--------- | :------- | :------------------------------------------------------------------------------- |
+| 上交所     | SHSE     | 60s 以及 60s 的整数倍(2016-1-1 - 至今), 1d(2005-1-1 - 至今)，不提供 60s 以下数据 |
+| 深交所     | SZSE     | 60s 以及 60s 的整数倍(2016-1-1 - 至今), 1d(2005-1-1 - 至今)，不提供 60s 以下数据 |
+
+> 注：s 表示“秒”, d 表示“天”。
+
+行情包含以下数据:
+
+| 参数名    | 类型              | 说明                                                                       |
+| :-------- | :---------------- | :------------------------------------------------------------------------- |
+| symbol    | str               | [标的代码](https://www.myquant.cn/docs/python/python_concept/.html#symbol) |
+| frequency | str               | 频率                                                                       |
+| open      | float             | 开盘价                                                                     |
+| close     | float             | 收盘价                                                                     |
+| high      | float             | 最高价                                                                     |
+| low       | float             | 最低价                                                                     |
+| amount    | float             | 成交额                                                                     |
+| volume    | int               | 成交量                                                                     |
+| bob       | datetime.datetime | bar 开始时间                                                               |
+| eob       | datetime.datetime | bar 结束时间                                                               |
+
+---
+
+## 3. 财务数据
+
+#### 数据接口
+
+掘金量化支持查询国内两个市场的股票财务数据。
+
+| 交易所名称 | 市场代码 |
+| :--------- | :------- |
+| 上交所     | SHSE     |
+| 深交所     | SZSE     |
+
+##### **Python 数据接口**
+
+1. [get_fundamentals - 查询基本面数据](https://www.myquant.cn/docs/python/python_select_api.html#d94aaf0627cc601d)
+2. [get_fundamentals_n - 查询基本面数据最新 n 条](https://www.myquant.cn/docs/python/python_select_api.html#c381514c399a3d0a)，取指定股票的最近 _“end_date_ ” 的 _“count”_ 条记录
+
+**示例 1**
+
+取股票代码“SHSE.600000”、“SZSE.000001”在指定时间段：2016-01-01 -- 2017-01-01，`股票交易衍生表`中的 TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,
+
+PETTMNPAAEI 字段的值：
+
+```python
+get_fundamentals(table='trading_derivative_indicator', symbols='SHSE.600000, SZSE.000001', start_date='2016-01-01', end_date='2017-01-01',
+fields='TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI', df=True)
+```
+
+返回结果：
+
+```python
+          symbol                  pub_date                  end_date  TCLOSE  ...   PETTM   PEMRQ  PELFYNPAAEI  PETTMNPAAEI
+0    SHSE.600000 2016-01-04 00:00:00+08:00 2016-01-04 00:00:00+08:00   17.80  ...  6.7228  6.7010       7.1175       6.8409
+1    SZSE.000001 2016-01-04 00:00:00+08:00 2016-01-04 00:00:00+08:00   11.33  ...  7.4202  6.8539       8.1708       6.8485
+2    SHSE.600000 2016-01-05 00:00:00+08:00 2016-01-05 00:00:00+08:00   17.96  ...  6.7832  6.7613       7.1815       6.9024
+3    SZSE.000001 2016-01-05 00:00:00+08:00 2016-01-05 00:00:00+08:00   11.40  ...  7.4661  6.8962       8.2213       6.8908
+4    SHSE.600000 2016-01-06 00:00:00+08:00 2016-01-06 00:00:00+08:00   18.10  ...  6.8361  6.8140       7.2375       6.9562
+..           ...                       ...                       ...     ...  ...     ...     ...          ...          ...
+483  SZSE.000001 2016-12-28 00:00:00+08:00 2016-12-28 00:00:00+08:00    9.06  ...  6.8098  6.2329       7.1027       6.2369
+484  SHSE.600000 2016-12-29 00:00:00+08:00 2016-12-29 00:00:00+08:00   16.07  ...  6.4187  6.4047       7.0097       6.5613
+485  SZSE.000001 2016-12-29 00:00:00+08:00 2016-12-29 00:00:00+08:00    9.08  ...  6.8249  6.2466       7.1184       6.2506
+486  SHSE.600000 2016-12-30 00:00:00+08:00 2016-12-30 00:00:00+08:00   16.21  ...  6.4746  6.4605       7.0707       6.6184
+487  SZSE.000001 2016-12-30 00:00:00+08:00 2016-12-30 00:00:00+08:00    9.10  ...  6.8399  6.2604       7.1341       6.2644
+
+[488 rows x 12 columns]
+```
+
+**示例 2**
+
+取股票代码“SHSE.600000”、“SZSE.000001”离 2017-01-01 最近一个交易日的`股票交易衍生表`中的
+
+TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI 字段的
+
+值：
+
+```python
+get_fundamentals_n(table='trading_derivative_indicator', symbols='SHSE.600000, SZSE.000001', end_date='2017-01-01', count=1, fields='TCLOSE,NEGOTIABLEMV,TOTMKTCAP,TURNRATE,PELFY,PETTM,PEMRQ,PELFYNPAAEI,PETTMNPAAEI',df=True)
+```
+
+返回结果：
+
+```python
+  symbol       pub_date             end_date             NEGOTIABLEMV  PEMRQ    PELFYNPAAEI    PETTMNPAAEI  PELFY    TURNRATE    PETTM    TOTMKTCAP    TCLOSE
+SHSE.600000  2016-12-30 00:00:00  2016-12-30 00:00:00     3.3261e+11    6.4605         7.0707         6.6184   6.925       0.0598   6.4746  3.50432e+11     16.21
+SZSE.000001  2016-12-30 00:00:00  2016-12-30 00:00:00     1.33144e+11   6.2604         7.1341         6.2644   7.1462      0.2068   6.8399  1.56251e+11      9.1
+```
+
+##### **其他语言数据接口**
+
+**C#**
+
+- [GetFundamentals - 查询基本面数据](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#9ef32170578db21c)
+- [GetFundamentalsN - 查询基本面数据最新 n 条](https://www.myquant.cn/docs/csharp/cs-data-search-func.md#b517df3510961226)
+
+**C++**
+
+- [get_fundamentals - 查询基本面数据](https://www.myquant.cn/docs/cpp/global-func.md#d94aaf0627cc601d)
+- [get_fundamentals_n - 查询基本面数据最新 n 条](https://www.myquant.cn/docs/cpp/global-func.md#c381514c399a3d0a)
+
+**MATLAB**
+
+- [get_fundamentals - 查询固定时间基本面数据](https://www.myquant.cn/docs/matlab/305.html#744e55b70cbd5a08)
+- [get_fundamentals_n - 查询固定长度基本面数据](https://www.myquant.cn/docs/matlab/305.html#8a1c0b93a3851848)
+
+### 财务数据文档
+
+##### 股票交易衍生表
+
+​ 数据范围：股票交易行情衍生的财务数据。
+
+​ 维护时间范围：1990-12-19 至今
+
+​ 更新频率和时间：每日 19 点
+
+​ 表名：trading_derivative_indicator
+
+| 列名         | 列的含义                        | 单位 | 释义                                                                                                                                                                                                            |
+| :----------- | :------------------------------ | :--- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| DY           | 股息率(滚动 12 月-按证监会口径) | %    | 用过去一个完整日历年分红数据除以当前价格，对于指数计算时需要考虑按流通股本和总股本，从而有红利收益率 1 和红利收益率 2 之分。                                                                                    |
+| EV           | 企业价值 EV                     | 元   | 股权价值＋债权价值                                                                                                                                                                                              |
+| EVEBITDA     | 企业价值／税息折旧摊销前利润    | 倍   |                                                                                                                                                                                                                 |
+| EVPS         | 每股企业价值                    | 元   |                                                                                                                                                                                                                 |
+| LTDATE       | 最近交易日                      |      | 默认字段，不必在 field 中指定。                                                                                                                                                                                 |
+| LYDY         | 股息率(滚动 12 月-财汇口径)     |      |                                                                                                                                                                                                                 |
+| NEGOTIABLEMV | 流通市值                        | 元   | 针对 A 股,该字段表示根据实际流通的流通股数计算的市值。B 股需要考虑汇率和不考虑汇率的情况的市值，考虑汇率时需要用当时的汇率数据计算，历史汇率数据不调整。                                                        |
+| PB           | 市净率(PB)                      | 倍   | 市净率=当日收盘价＊当日公司总股本／净资产，其中净资产取最新报告期披露的净资产。                                                                                                                                 |
+| PCLFY        | 市现率 LFY                      | 倍   | 市现率=当日收盘价＊当日公司总股本／经营活动产生的现金流，其中经营活动产生的现金流取最近年报披露的“经营活动现金流入小计”。                                                                                       |
+| PCTTM        | 市现率 TTM                      | 倍   | 市现率=当日收盘价＊当日公司总股本／经营活动产生的现金流，其中经营活动产生的现金流取最近四个季度的“经营活动现金流入小计”。例如，最近披露的是一季报，则用(一季报数据＋上年年报数据-上年一季报数据)，以此类推。    |
+| PELFY        | 市盈率 LFY                      | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润取最近年报披露的“归属母公司所有者的净利润”。                                                                                                               |
+| PELFYNPAAEI  | 市盈率 LFY 扣除非经常性损益     | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润取最近年报披露的“扣除非经常性损益后的净利润”。                                                                                                             |
+| PEMRQ        | 市盈率 MRQ                      | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润用最新报告期披露的“归属母公司所有者的净利润”折算成的年化净利润。例如，最近披露的是一季报，则一季报数据＊4，中报则中报数据＊2，三季报则三季报数据＊4／3。   |
+| PEMRQNPAAEI  | 市盈率 MRQ 扣除非经常性损益     | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润用最新报告期披露的“扣除非经常性损益后的净利润”折算成的年化净利润。例如，最近披露的是一季报，则一季报数据＊4，中报则中报数据＊2，三季报则三季报数据＊4／3。 |
+| PETTM        | 市盈率 TTM                      | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润取最近四个季度的“归属母公司所有者的净利润”。例如，最近披露的是一季报，则用(一季报数据＋上年年报数据-上年一季报数据)，以此类推。                            |
+| PETTMNPAAEI  | 市盈率 TTM 扣除非经常性损益     | 倍   | 市盈率=当日收盘价＊当日公司总股本／净利润，其中净利润取最近四个季度的“扣除非经常性损益后的净利润”。例如，最近披露的是一季报，则用(一季报数据＋上年年报数据-上年一季报数据)，以此类推。                          |
+| PSLFY        | 市销率 LFY                      | 倍   | 市销率=当日收盘价＊当日公司总股本／营业收入，其中营业收入取最近年报披露的“营业收入”。                                                                                                                           |
+| PSMRQ        | 市销率 MRQ                      | 倍   | 市销率=当日收盘价＊当日公司总股本／营业收入，其中营业收入用最新报告期披露的“营业收入”折算成的年化净利润。例如，最近披露的是一季报，则一季报数据＊4，中报则中报数据＊2，三季报则三季报数据＊4／3。               |
+| PSTTM        | 市销率 TTM                      | 倍   | 市销率=当日收盘价＊当日公司总股本／营业收入，其中营业收入取最近四个季度的“营业收入”。例如，最近披露的是一季报，则用(一季报数据＋上年年报数据-上年一季报数据)，以此类推。                                        |
+| TCLOSE       | 收盘价                          | 元   |                                                                                                                                                                                                                 |
+| TMSTAMP      | 时间标识                        |      | 默认字段，不必在 field 中指定。                                                                                                                                                                                 |
+| TOTMKTCAP    | 总市值                          | 元   | 总市值计算包括限售股份 或未流通股份。                                                                                                                                                                           |
+| TRADEDATE    | 交易日期                        |      |                                                                                                                                                                                                                 |
+| TURNRATE     | 当日换手率                      | %    |                                                                                                                                                                                                                 |
+| TOTAL_SHARE  | 总股本                          | 股   |                                                                                                                                                                                                                 |
+| FLOW_SHARE   | 流通股本                        | 股   |                                                                                                                                                                                                                 |     |
+
+##### 资产负债表
+
+​ 数据范围：股票资产负债表数据。
+
+​ 维护时间范围：1989-12-31 至今
+
+​ 更新频率和时间：每季度财报公布日，当日 19 点
+
+​ 表名: balance_sheet
+
+| 列名                   | 列的含义                         | 单位 |
+| :--------------------- | :------------------------------- | :--- |
+| ACCHELDFORS            | 划分为持有待售的资产             | 元   |
+| ACCOPAYA               | 应付账款                         | 元   |
+| ACCORECE               | 应收账款                         | 元   |
+| ACCREXPE               | 预提费用                         | 元   |
+| ACCUDEPR               | 累计折旧                         | 元   |
+| ACTITRADSECU           | 代理买卖证券款                   | 元   |
+| ACTIUNDESECU           | 代理承销证券款                   | 元   |
+| ADVAPAYM               | 预收款项                         | 元   |
+| AVAISELLASSE           | 可供出售金融资产                 | 元   |
+| BDSPAYA                | 应付债券                         | 元   |
+| BDSPAYAPERBOND         | 应付债券:永续债                  | 元   |
+| BDSPAYAPREST           | 应付债券:优先股                  | 元   |
+| CAPISURP               | 资本公积                         | 元   |
+| CENBANKBORR            | 向中央银行借款                   | 元   |
+| COMASSE                | 公益性生物资产                   | 元   |
+| CONSPROG               | 在建工程                         | 元   |
+| COPEPOUN               | 应付手续费及佣金                 | 元   |
+| COPEWITHREINRECE       | 应付分保账款                     | 元   |
+| COPEWORKERSAL          | 应付职工薪酬                     | 元   |
+| CURFDS                 | 货币资金                         | 元   |
+| CURTRANDIFF            | 外币报表折算差额                 | 元   |
+| DEFEINCOTAXLIAB        | 递延所得税负债                   | 元   |
+| DEFEREVE               | 一年内的递延收益                 | 元   |
+| DEFETAXASSET           | 递延所得税资产                   | 元   |
+| DEPOSIT                | 吸收存款及同业存放               | 元   |
+| DERIFINAASSET          | 衍生金融资产                     | 元   |
+| DERILIAB               | 衍生金融负债                     | 元   |
+| DEVEEXPE               | 开发支出                         | 元   |
+| DIVIDRECE              | 应收股利                         | 元   |
+| DIVIPAYA               | 应付股利                         | 元   |
+| DOMETICKSETT           | 国内票证结算                     | 元   |
+| DUENONCLIAB            | 一年内到期的非流动负债           | 元   |
+| ENGIMATE               | 工程物资                         | 元   |
+| EQUIINVE               | 长期股权投资                     | 元   |
+| EXPECURRLIAB           | 预计流动负债                     | 元   |
+| EXPENONCLIAB           | 预计非流动负债                   | 元   |
+| EXPINONCURRASSET       | 一年内到期的非流动资产           | 元   |
+| EXPOTAXREBARECE        | 应收出口退税                     | 元   |
+| FDSBORR                | 拆入资金                         | 元   |
+| FIXEDASSECLEA          | 固定资产清理                     | 元   |
+| FIXEDASSEIMMO          | 固定资产原值                     | 元   |
+| FIXEDASSEIMPA          | 固定资产减值准备                 | 元   |
+| FIXEDASSENET           | 固定资产净额                     | 元   |
+| FIXEDASSENETW          | 固定资产净值                     | 元   |
+| GENERISKRESE           | 一般风险准备                     | 元   |
+| GOODWILL               | 商誉                             | 元   |
+| HOLDINVEDUE            | 持有至到期投资                   | 元   |
+| HYDRASSET              | 油气资产                         | 元   |
+| INSUCONTRESE           | 保险合同准备金                   | 元   |
+| INTAASSET              | 无形资产                         | 元   |
+| INTELPAY               | 内部应付款                       | 元   |
+| INTELRECE              | 内部应收款                       | 元   |
+| INTEPAYA               | 应付利息                         | 元   |
+| INTERECE               | 应收利息                         | 元   |
+| INTETICKSETT           | 国际票证结算                     | 元   |
+| INVE                   | 存货                             | 元   |
+| INVEPROP               | 投资性房地产                     | 元   |
+| LCOPEWORKERSAL         | 长期应付职工薪酬                 | 元   |
+| LENDANDLOAN            | 发放贷款及垫款                   | 元   |
+| LIABHELDFORS           | 划分为持有待售的负债             | 元   |
+| LOGPREPEXPE            | 长期待摊费用                     | 元   |
+| LONGBORR               | 长期借款                         | 元   |
+| LONGDEFEINCO           | 长期递延收益                     | 元   |
+| LONGPAYA               | 长期应付款                       | 元   |
+| LONGRECE               | 长期应收款                       | 元   |
+| MARGRECE               | 应收保证金                       | 元   |
+| MARGREQU               | 应付保证金                       | 元   |
+| MINYSHARRIGH           | 少数股东权益                     | 元   |
+| NOTESPAYA              | 应付票据                         | 元   |
+| NOTESRECE              | 应收票据                         | 元   |
+| OCL                    | 其他综合收益                     | 元   |
+| OTHEQUIN               | 其他权益工具                     | 元   |
+| OTHERCURRASSE          | 其他流动资产                     | 元   |
+| OTHERCURRELIABI        | 其他流动负债                     | 元   |
+| OTHERFEEPAYA           | 其他应交款                       | 元   |
+| OTHERLONGINVE          | 其他长期投资                     | 元   |
+| OTHERNONCASSE          | 其他非流动资产                   | 元   |
+| OTHERNONCLIABI         | 其他非流动负债                   | 元   |
+| OTHERPAY               | 其他应付款                       | 元   |
+| OTHERRECE              | 其他应收款                       | 元   |
+| PAIDINCAPI             | 实收资本(或股本)                 | 元   |
+| PARESHARRIGH           | 归属于母公司股东权益合计         | 元   |
+| PERBOND                | 永续债                           | 元   |
+| PLAC                   | 拆出资金                         | 元   |
+| PREMRECE               | 应收保费                         | 元   |
+| PREP                   | 预付款项                         | 元   |
+| PREPEXPE               | 待摊费用                         | 元   |
+| PREST                  | 优先股                           | 元   |
+| PRODASSE               | 生产性生物资产                   | 元   |
+| PUBLISHDATE            | 发布时期                         |      |
+| PURCRESAASSET          | 买入返售金融资产                 | 元   |
+| REINCONTRESE           | 应收分保合同准备金               | 元   |
+| REINRECE               | 应收分保账款                     | 元   |
+| RESE                   | 盈余公积                         | 元   |
+| RIGHAGGR               | 所有者权益(或股东权益)合计       | 元   |
+| SELLREPASSE            | 卖出回购金融资产款               | 元   |
+| SETTRESEDEPO           | 结算备付金                       | 元   |
+| SFORMATCURRASSE        | 特殊格式\_流动资产               | 元   |
+| SFORMATCURRELIABI      | 特殊格式\_流动负债               | 元   |
+| SFORMATNONCASSE        | 特殊格式\_非流动资产             | 元   |
+| SFORMATNONCLIAB        | 特殊格式\_长期负债               | 元   |
+| SFORMATPARESHARRIGH    | 特殊格式\_归属母公司股东权益     | 元   |
+| SFORMATRIGHAGGR        | 特殊格式\_含少数股权股东权益     | 元   |
+| SFORMATTOTASSET        | 特殊格式\_总资产                 | 元   |
+| SFORMATTOTLIAB         | 特殊格式\_负债合计               | 元   |
+| SFORMATTOTLIABSHAREQUI | 特殊格式\_负债及权益             | 元   |
+| SHORTTERMBDSPAYA       | 应付短期债券                     | 元   |
+| SHORTTERMBORR          | 短期借款                         | 元   |
+| SMERGERCURRASSE        | 特殊归并\_流动资产               | 元   |
+| SMERGERCURRELIABI      | 特殊归并\_流动负债               | 元   |
+| SMERGERNONCASSE        | 特殊归并\_非流动资产             | 元   |
+| SMERGERNONCLIAB        | 特殊归并\_长期负债               | 元   |
+| SMERGERPARESHARRIGH    | 特殊归并\_归属母公司股东权益     | 元   |
+| SMERGERRIGHAGGR        | 特殊归并\_含少数股权股东权益     | 元   |
+| SMERGERTOTASSET        | 特殊归并\_总资产                 | 元   |
+| SMERGERTOTLIAB         | 特殊归并\_负债合计               | 元   |
+| SMERGERTOTLIABSHAREQUI | 特殊归并\_负债及权益             | 元   |
+| SPECPAYA               | 专项应付款                       | 元   |
+| SPECRESE               | 专项储备                         | 元   |
+| SUBSRECE               | 应收补贴款                       | 元   |
+| SUNEVENASSETLIABEUQI   | 特殊不平\_资产与负债权益         | 元   |
+| SUNEVENCURRASSE        | 特殊不平\_流动资产               | 元   |
+| SUNEVENCURRELIABI      | 特殊不平\_流动负债               | 元   |
+| SUNEVENNONCASSE        | 特殊不平\_非流动资产             | 元   |
+| SUNEVENNONCLIAB        | 特殊不平\_长期负债               | 元   |
+| SUNEVENPARESHARRIGH    | 特殊不平\_归属母公司股东权益     | 元   |
+| SUNEVENRIGHAGGR        | 特殊不平\_含少数股权股东权益     | 元   |
+| SUNEVENTOTASSET        | 特殊不平\_总资产                 | 元   |
+| SUNEVENTOTLIAB         | 特殊不平\_负债合计               | 元   |
+| SUNEVENTOTLIABSHAREQUI | 特殊不平\_负债及权益             | 元   |
+| TAXESPAYA              | 应交税费                         | 元   |
+| TOPAYCASHDIVI          | 拟分配现金股利                   | 元   |
+| TOTALCURRLIAB          | 流动负债合计                     | 元   |
+| TOTALNONCASSETS        | 非流动资产合计                   | 元   |
+| TOTALNONCLIAB          | 非流动负债合计                   | 元   |
+| TOTASSET               | 资产总计                         | 元   |
+| TOTCURRASSET           | 流动资产合计                     | 元   |
+| TOTLIAB                | 负债合计                         | 元   |
+| TOTLIABSHAREQUI        | 负债和所有者权益(或股东权益)总计 | 元   |
+| TRADFINASSET           | 交易性金融资产                   | 元   |
+| TRADFINLIAB            | 交易性金融负债                   | 元   |
+| TRADSHARTRAD           | 股权分置流通权                   | 元   |
+| TREASTK                | 减:库存股                        | 元   |
+| UNDIPROF               | 未分配利润                       | 元   |
+| UNREINVELOSS           | 未确定的投资损失                 | 元   |
+| UNSEG                  | 待处理流动资产损益               | 元   |
+| WARLIABRESE            | 担保责任赔偿准备金               | 元   |
+
+##### 现金流量表
+
+​ 数据范围：股票资产现金流量表数据。
+
+​ 维护时间范围：1996-12-31 至今
+
+​ 更新频率和时间：每季度财报公布日，当日 19 点
+
+​ 表名: cashflow_statement
+
+| 列名                  | 列的含义                                            | 单位 |
+| :-------------------- | :-------------------------------------------------- | :--- |
+| ACCREXPEINCR          | 预提费用的增加                                      | 元   |
+| ACQUASSETCASH         | 购建固定资产,无形资产和其他长期资产所支付的现金     | 元   |
+| ASSEDEPR              | 固定资产折旧,油气资产折耗,生产性物资折旧            | 元   |
+| ASSEIMPA              | 资产减值准备                                        | 元   |
+| BANKLOANNETINCR       | 向中央银行借款净增加额                              | 元   |
+| BIZCASHINFL           | 经营活动现金流入小计                                | 元   |
+| BIZCASHOUTF           | 经营活动现金流出小计                                | 元   |
+| BIZNETCFLOW           | 经营活动产生现金流量净额                            | 元   |
+| CASHFINALBALA         | 现金的期末余额                                      | 元   |
+| CASHNETI              | 现金及现金等价物的净增加额                          | 元   |
+| CASHNETR              | 五,现金及现金等价物净增加额                         | 元   |
+| CASHOPENBALA          | 现金的期初余额                                      | 元   |
+| CHARINTECASH          | 收取利息,手续费及佣金的现金                         | 元   |
+| CHGEXCHGCHGS          | 四,汇率变动对现金及现金等价物的影响                 | 元   |
+| DEBTINTOCAPI          | 债务转为资本                                        | 元   |
+| DEBTPAYCASH           | 偿还债务支付的现金                                  | 元   |
+| DEFEINCOINCR          | 递延收益增加(减:减少)                               | 元   |
+| DEFETAXASSETDECR      | 递延所得税资产减少                                  | 元   |
+| DEFETAXLIABINCR       | 递延所得税负债增加                                  | 元   |
+| DEPONETR              | 客户存款和同业存放款项净增加额                      | 元   |
+| DISPFIXEDASSETLOSS    | 处置固定资产,无形资产和其他长期资产的损失           | 元   |
+| DISPTRADNETINCR       | 处置交易性金融资产净增加额                          | 元   |
+| DIVIPROFPAYCASH       | 分配股利,利润或偿付利息所支付的现金                 | 元   |
+| EQUFINALBALA          | 现金等价物的期末余额                                | 元   |
+| EQUOPENBALA           | 现金等价物的期初余额                                | 元   |
+| ESTIDEBTS             | 预计负债                                            | 元   |
+| EXPICONVBD            | 一年内到期的可转换公司债券                          | 元   |
+| FDSBORRNETR           | 拆入资金净增加额                                    | 元   |
+| FINALCASHBALA         | 六,期末现金及现金等价物余额                         | 元   |
+| FINCASHINFL           | 筹资活动现金流入小计                                | 元   |
+| FINCASHOUTF           | 筹资活动现金流出小计                                | 元   |
+| FINEXPE               | 财务费用                                            | 元   |
+| FINFIXEDASSET         | 融资租入固定资产                                    | 元   |
+| FININSTNETR           | 向其他金融机构拆入资金净增加额                      | 元   |
+| FINNETCFLOW           | 三,筹资活动产生的现金流量净额                       | 元   |
+| FINRELACASH           | 支付其他与筹资活动有关的现金                        | 元   |
+| FIXEDASSESCRALOSS     | 固定资产报废损失                                    | 元   |
+| FIXEDASSETNETC        | 处置固定资产,无形资产和其他长期资产所收回的现金净额 | 元   |
+| INCRCASHPLED          | 增加质押和定期存款所支付的现金                      | 元   |
+| INICASHBALA           | 期初现金及现金等价物余额                            | 元   |
+| INSNETC               | 收到再保险业务现金净额                              | 元   |
+| INSPREMCASH           | 收到原保险合同保费取得的现金                        | 元   |
+| INTAASSEAMOR          | 无形资产摊销                                        | 元   |
+| INVCASHINFL           | 投资活动现金流入小计                                | 元   |
+| INVCASHOUTF           | 投资活动现金流出小计                                | 元   |
+| INVELOSS              | 投资损失                                            | 元   |
+| INVEREDU              | 存货的减少                                          | 元   |
+| INVERETUGETCASH       | 取得投资收益收到的现金                              | 元   |
+| INVNETCASHFLOW        | 二,投资活动产生的现金流量净额                       | 元   |
+| INVPAYC               | 投资所支付的现金                                    | 元   |
+| INVRECECASH           | 吸收投资收到的现金                                  | 元   |
+| ISSBDRECECASH         | 发行债券收到的现金                                  | 元   |
+| LABOPAYC              | 购买商品,接受劳务支付的现金                         | 元   |
+| LABORGETCASH          | 销售商品,提供劳务收到的现金                         | 元   |
+| LOANNETR              | 质押贷款净增加额                                    | 元   |
+| LOANSNETR             | 客户贷款及垫款净增加额                              | 元   |
+| LONGDEFEEXPENAMOR     | 长期待摊费用摊销                                    | 元   |
+| MANANETR              | 一,经营活动产生的现金流量净额                       | 元   |
+| MINYSHARRIGH          | 少数股东权益                                        | 元   |
+| NETPROFIT             | 净利润                                              | 元   |
+| OTHER                 | 其他                                                | 元   |
+| PAYACTICASH           | 支付的其他与经营活动有关的现金                      | 元   |
+| PAYAINCR              | 经营性应付项目的增加                                | 元   |
+| PAYCOMPGOLD           | 支付原保险合同赔付款项的现金                        | 元   |
+| PAYDIVICASH           | 支付保单红利的现金                                  | 元   |
+| PAYINTECASH           | 支付利息,手续费及佣金的现金                         | 元   |
+| PAYINVECASH           | 支付的其他与投资活动有关的现金                      | 元   |
+| PAYTAX                | 支付的各项税费                                      | 元   |
+| PAYWORKCASH           | 支付给职工以及为职工支付的现金                      | 元   |
+| PREPEXPEDECR          | 待摊费用的减少                                      | 元   |
+| PUBLISHDATE           | 发布时期                                            |      |
+| REALESTADEP           | 投资性房地产折旧,摊销                               | 元   |
+| RECEFINCASH           | 收到其他与筹资活动有关的现金                        | 元   |
+| RECEFROMLOAN          | 取得借款收到的现金                                  | 元   |
+| RECEINVCASH           | 收到的其他与投资活动有关的现金                      | 元   |
+| RECEOTHERBIZCASH      | 收到的其他与经营活动有关的现金                      | 元   |
+| RECEREDU              | 经营性应收项目的减少                                | 元   |
+| REDUCASHPLED          | 减少质押和定期存款所收到的现金                      | 元   |
+| REPNETINCR            | 回购业务资金净增加额                                | 元   |
+| SAVINETR              | 保户储金及投资款净增加额                            | 元   |
+| SFORMATBIZCASHINFL    | 特殊格式\_经营流入                                  | 元   |
+| SFORMATBIZCASHOUTF    | 特殊格式\_经营流出                                  | 元   |
+| SFORMATBIZNETCFLOW    | 特殊格式\_经营净额附表                              | 元   |
+| SFORMATCASHNETI       | 特殊格式\_现金净额附表                              | 元   |
+| SFORMATCASHNETR       | 特殊格式\_现金净额                                  | 元   |
+| SFORMATFINALCASHBALA  | 特殊格式\_现金期末                                  | 元   |
+| SFORMATFINCASHINFL    | 特殊格式\_筹资流入                                  | 元   |
+| SFORMATFINCASHOUTF    | 特殊格式\_筹资流出                                  | 元   |
+| SFORMATINVCASHINFL    | 特殊格式\_投资流入                                  | 元   |
+| SFORMATINVCASHOUTF    | 特殊格式\_投资流出                                  | 元   |
+| SFORMATMANANETR       | 特殊格式\_经营净额                                  | 元   |
+| SMERGERBIZCASHINFL    | 特殊归并\_经营流入                                  | 元   |
+| SMERGERBIZCASHOUTF    | 特殊归并\_经营流出                                  | 元   |
+| SMERGERBIZNETCFLOW    | 特殊归并\_经营净额附表                              | 元   |
+| SMERGERCASHNETI       | 特殊归并\_现金净额附表                              | 元   |
+| SMERGERCASHNETR       | 特殊归并\_现金净额                                  | 元   |
+| SMERGERFINALCASHBALA  | 特殊归并\_现金期末                                  | 元   |
+| SMERGERFINCASHINFL    | 特殊归并\_筹资流入                                  | 元   |
+| SMERGERFINCASHOUTF    | 特殊归并\_筹资流出                                  | 元   |
+| SMERGERFINNETCFLOW    | 特殊归并\_筹资净额                                  | 元   |
+| SMERGERINVCASHINFL    | 特殊归并\_投资流入                                  | 元   |
+| SMERGERINVCASHOUTF    | 特殊归并\_投资流出                                  | 元   |
+| SMERGERINVNETCASHFLOW | 特殊归并\_投资净额                                  | 元   |
+| SMERGERMANANETR       | 特殊归并\_经营净额                                  | 元   |
+| SUBSNETC              | 处置子公司及其他营业单位收到的现金净额              | 元   |
+| SUBSPAYDIVID          | 其中:子公司支付给少数股东的股利,利润                | 元   |
+| SUBSPAYNETCASH        | 取得子公司及其他营业单位支付的现金净额              | 元   |
+| SUBSRECECASH          | 其中:子公司吸收少数股东投资收到的现金               | 元   |
+| SUNEVENBIZCASHINFL    | 特殊不平\_经营流入                                  | 元   |
+| SUNEVENBIZCASHOUTF    | 特殊不平\_经营流出                                  | 元   |
+| SUNEVENBIZNETCFLOW    | 特殊不平\_经营净额附表                              | 元   |
+| SUNEVENCASHNETI       | 特殊不平\_现金净额附表                              | 元   |
+| SUNEVENCASHNETIMS     | 特殊不平\_现金净额主附表                            | 元   |
+| SUNEVENCASHNETR       | 特殊不平\_现金净额                                  | 元   |
+| SUNEVENFINALCASHBALA  | 特殊不平\_现金期末                                  | 元   |
+| SUNEVENFINCASHINFL    | 特殊不平\_筹资流入                                  | 元   |
+| SUNEVENFINCASHOUTF    | 特殊不平\_筹资流出                                  | 元   |
+| SUNEVENFINNETCFLOW    | 特殊不平\_筹资净额                                  | 元   |
+| SUNEVENINVCASHINFL    | 特殊不平\_投资流入                                  | 元   |
+| SUNEVENINVCASHOUTF    | 特殊不平\_投资流出                                  | 元   |
+| SUNEVENINVNETCASHFLOW | 特殊不平\_投资净额                                  | 元   |
+| SUNEVENMANANETR       | 特殊不平\_经营净额                                  | 元   |
+| SUNEVENMANANETRMS     | 特殊不平\_经营净额主附表                            | 元   |
+| TAXREFD               | 收到的税费返还                                      | 元   |
+| TRADEPAYMNETR         | 存放中央银行和同业款项净增加额                      | 元   |
+| UNFIPARACHG           | 已结算尚未完工款的增加(减:减少)                     | 元   |
+| UNREINVELOSS          | 未确认的投资损失                                    | 元   |
+| UNSEPARACHG           | 已完工尚未结算款的减少(减:增加)                     | 元   |
+| VALUECHGLOSS          | 公允价值变动损失                                    | 元   |
+| WITHINVGETCASH        | 收回投资所收到的现金                                | 元   |
+
+##### 利润表
+
+​ 数据范围：股票资产利润表数据。
+
+​ 维护时间范围 1989-12-31 至今
+
+​ 更新频率和时间：每季度财报公布日，当日 19 点
+
+​ 表名: income_statement
+
+| 列名                     | 列的含义                                     | 单位 |
+| :----------------------- | :------------------------------------------- | :--- |
+| ASSEIMPALOSS             | 资产减值损失                                 | 元   |
+| ASSOINVEPROF             | 其中:对联营企业和合营企业的投资收益          | 元   |
+| AVAIDISTPROF             | 可供分配的利润                               | 元   |
+| AVAIDISTSHAREPROF        | 可供股东分配的利润                           | 元   |
+| BASICEPS                 | 基本每股收益                                 | 元   |
+| BIZCOST                  | 营业成本                                     | 元   |
+| BIZINCO                  | 营业收入                                     | 元   |
+| BIZTAX                   | 营业税金及附加                               | 元   |
+| BIZTOTCOST               | 营业总成本                                   | 元   |
+| BIZTOTINCO               | 营业总收入                                   | 元   |
+| CINAFORSFV               | 可供出售金融资产公允价值变动损益             |      |
+| CINALIBOFRBP             | 重新计量设定受益计划净负债或净资产的变动     |      |
+| COMDIVPAYBABLE           | 应付普通股股利                               | 元   |
+| COMPCODE                 | 公司内码                                     |      |
+| COMPINCOAMT              | 综合收益总额                                 | 元   |
+| COMPNETEXPE              | 赔付支出净额                                 | 元   |
+| CONTRESS                 | 提取保险合同准备金净额                       | 元   |
+| CPLTOHINCO               | 以后将重分类进损益的其他综合收益             |      |
+| CUSTINCO                 | 托管收益                                     | 元   |
+| DATASOURCE               | 数据源；默认字段，不必在 field 中指定        |      |
+| DECLAREDATE              | 首次公告日期；默认字段，不必在 field 中指定  |      |
+| DEVEEXPE                 | 研发费用                                     | 元   |
+| DILUTEDEPS               | 稀释每股收益                                 | 元   |
+| EARLYUNDIPROF            | 年初未分配利润                               | 元   |
+| EARNPREM                 | 已赚保费                                     | 元   |
+| EPOCFHGL                 | 现金流量套期损益的有效部分                   |      |
+| EQUMCPOTHINCO            | 权益法下在被投资单位不能重分类进损益的其他综 |      |
+| EUQMICOLOTHINCO          | 权益法下在被投资单位以后将重分类进损益的其他 |      |
+| EXCHGGAIN                | 汇兑收益                                     | 元   |
+| EXTRARBIRESE             | 提取任意盈余公积                             | 元   |
+| EXTSTAFFFUND             | 提取职工奖福基金                             | 元   |
+| FINEXPE                  | 财务费用                                     | 元   |
+| FUTULOSS                 | 期货损益                                     | 元   |
+| HTMCCINAFORSFV           | 持有至到期投资重分类为可供出售金融资产损益   |      |
+| INCOTAXEXPE              | 所得税费用                                   | 元   |
+| INTEEXPE                 | 利息支出                                     | 元   |
+| INTEGRITY                | 报表完整性；默认字段，不必在 field 中指定    |      |
+| INTEINCO                 | 利息收入                                     | 元   |
+| INVEINCO                 | 投资收益                                     | 元   |
+| LEGALSURP                | 提取法定盈余公积                             | 元   |
+| MAINBIZCOST              | 主营业务成本                                 | 元   |
+| MAINBIZINCO              | 主营业务收入                                 | 元   |
+| MANAEXPE                 | 管理费用                                     | 元   |
+| MERGEFORMNETPROF         | 被合并方在合并前实现净利润                   | 元   |
+| MINYSHARINCO             | 归属于少数股东的其他综合收益                 | 元   |
+| MINYSHARINCOAMT          | 归属于少数股东的综合收益总额                 | 元   |
+| MINYSHARRIGH             | 少数股东损益                                 | 元   |
+| NCPOTHINCO               | 以后不能重分类进损益的其他综合收益           |      |
+| NETPROFIT                | 净利润                                       | 元   |
+| NONCASSETSDISI           | 非流动资产处置利得                           |      |
+| NONCASSETSDISL           | 非流动资产处置损失                           | 元   |
+| NONOEXPE                 | 营业外支出                                   | 元   |
+| NONOREVE                 | 营业外收入                                   | 元   |
+| OTHERBIZCOST             | 其他业务成本                                 | 元   |
+| OTHERBIZINCO             | 其他业务收入                                 | 元   |
+| OTHERBIZPROF             | 其他业务利润                                 | 元   |
+| OTHERCOMPINCO            | 其他综合收益                                 | 元   |
+| OTHERCPLTOHINCO          | 其他                                         |      |
+| OTHERREASADJU            | 其他因素调整                                 | 元   |
+| PARECOMPINCO             | 归属于母公司所有者的其他综合收益             | 元   |
+| PARECOMPINCOAMT          | 归属于母公司所有者的综合收益总额             | 元   |
+| PARENETP                 | 归属于母公司所有者的净利润                   | 元   |
+| PERPROFIT                | 营业利润                                     | 元   |
+| PEXTCCAPIFD              | 提取资本公积金                               | 元   |
+| PEXTCDEVEFD              | 提取企业发展基金                             | 元   |
+| POLIDIVIEXPE             | 保单红利支出                                 | 元   |
+| POUNEXPE                 | 手续费及佣金支出                             | 元   |
+| POUNINCO                 | 手续费及佣金收入                             | 元   |
+| PPROFRETUINVE            | 利润归还投资                                 | 元   |
+| PREFSTOCKDIVI            | 应付优先股股利                               | 元   |
+| PSUPPFLOWCAPI            | 补充流动资本                                 | 元   |
+| PUBLISHDATE              | 发布时期                                     |      |
+| REALSALE                 | 房地产销售收入                               | 元   |
+| REALSALECOST             | 房地产销售成本                               | 元   |
+| REINEXPE                 | 分保费用                                     | 元   |
+| RUNDISPROBYRREGCAP       | 减少注册资本减少的未分配利润                 | 元   |
+| SALESEXPE                | 销售费用                                     | 元   |
+| SFORMATAVAIDISTPROF      | 特殊格式\_可分配利润                         | 元   |
+| SFORMATAVAIDISTSHAREPROF | 特殊格式\_可供股东分配利润                   | 元   |
+| SFORMATBIZTOTCOST        | 特殊格式\_营业总成本                         | 元   |
+| SFORMATBIZTOTINCO        | 特殊格式\_营业总收入                         | 元   |
+| SFORMATNETPROFIT         | 特殊格式\_税后净利润                         | 元   |
+| SFORMATNETPROFITSUB      | 特殊格式\_净利润子项                         | 元   |
+| SFORMATPERPROFIT         | 特殊格式\_营业利润                           | 元   |
+| SFORMATTOTPROFIT         | 特殊格式\_利润总额                           | 元   |
+| SFORMATUNDIPROF          | 特殊格式\_未分配利润                         | 元   |
+| SMERGERAVAIDISTPROF      | 特殊归并\_可分配利润                         | 元   |
+| SMERGERAVAIDISTSHAREPROF | 特殊归并\_可供股东分配利润                   | 元   |
+| SMERGERBIZTOTCOST        | 特殊归并\_营业总成本                         | 元   |
+| SMERGERBIZTOTINCO        | 特殊归并\_营业总收入                         | 元   |
+| SMERGERCOMPINCOAMTSUB    | 特殊归并\_综合收益总额子项                   | 元   |
+| SMERGERNETPROFIT         | 特殊归并\_税后净利润                         | 元   |
+| SMERGERNETPROFITSUB      | 特殊归并\_净利润子项                         | 元   |
+| SMERGERPERPROFIT         | 特殊归并\_营业利润                           | 元   |
+| SMERGERTOTPROFIT         | 特殊归并\_利润总额                           | 元   |
+| SMERGERUNDIPROF          | 特殊归并\_未分配利润                         | 元   |
+| STATEXTRUNDI             | 提取法定公益金                               | 元   |
+| SUBSIDYINCOME            | 补贴收入                                     | 元   |
+| SUNEVENAVAIDISTPROF      | 特殊不平\_可分配利润                         | 元   |
+| SUNEVENAVAIDISTSHAREPROF | 特殊不平\_可供股东分配利润                   | 元   |
+| SUNEVENBIZTOTCOST        | 特殊不平\_营业总成本                         | 元   |
+| SUNEVENBIZTOTINCO        | 特殊不平\_营业总收入                         | 元   |
+| SUNEVENCOMPINCOAMT       | 特殊不平\_综合收益总额                       | 元   |
+| SUNEVENCOMPINCOAMTSUB    | 特殊不平\_综合收益总额子项                   | 元   |
+| SUNEVENNETPROFIT         | 特殊不平\_税后净利润                         | 元   |
+| SUNEVENNETPROFITSUB      | 特殊不平\_净利润子项                         | 元   |
+| SUNEVENOTHCOMPINCOAMT    | 特殊不平\_其他综合收益                       | 元   |
+| SUNEVENPERPROFIT         | 特殊不平\_营业利润                           | 元   |
+| SUNEVENTOTPROFIT         | 特殊不平\_利润总额                           | 元   |
+| SUNEVENUNDIPROF          | 特殊不平\_未分配利润                         | 元   |
+| SURRGOLD                 | 退保金                                       | 元   |
+| TDIFFFORCUR              | 外币财务报表折算差额                         |      |
+| TOTPROFIT                | 利润总额                                     | 元   |
+| TRUSTLOSS                | 提取储备基金                                 | 元   |
+| TURNCAPSDIVI             | 转作资本股本的普通股股利                     | 元   |
+| UNDIPROF                 | 未分配利润                                   | 元   |
+| UNREINVELOSS             | 未确认投资损失                               | 元   |
+| VALUECHGLOSS             | 公允价值变动收益                             | 元   |
+
+##### 主要财务指标
+
+​ 表名: prim_finance_indicator
+
+​ 维护时间范围: 1989-12-31 至今
+
+| 列名              | 列的含义                         | 单位 |
+| :---------------- | :------------------------------- | :--- |
+| EBIT              | EBIT                             | 元   |
+| EBITDA            | EBITDA                           | 元   |
+| EBITDASCOVER      | EBITDA 利息保障倍数              | 倍   |
+| EBITSCOVER        | EBIT 利息保障倍数                | 倍   |
+| EPSBASIC          | (一)基本每股收益                 | 元   |
+| EPSBASICEPSCUT    | 扣除非经常性损益后的基本每股收益 | 元   |
+| EPSDILUTED        | 每股收益\_摊薄                   | 元   |
+| EPSDILUTEDCUT     | 每股收益\_扣除摊薄               | 元   |
+| EPSFULLDILUTED    | (二)稀释每股收益                 | 元   |
+| EPSFULLDILUTEDCUT | 扣除非经常性损益后的稀释每股收益 | 元   |
+| EPSWEIGHTED       | 每股收益\_加权                   | 元   |
+| EPSWEIGHTEDCUT    | 每股收益\_扣除加权               | 元   |
+| NPCUT             | 扣除非经常性损益的净利润         | 元   |
+| OPNCFPS           | 每股经营活动产生的现金流量净额   | 元   |
+| ROEDILUTED        | 净资产收益率\_摊薄               | %    |
+| ROEDILUTEDCUT     | 净资产收益率\_扣除摊薄           | %    |
+| ROEWEIGHTED       | 净资产收益率\_加权               | %    |
+| ROEWEIGHTEDCUT    | 净资产收益率\_扣除加权           | %    |
+
+##### 衍生财务指标
+
+​ 数据范围：股票衍生财务指标数据。
+
+​ 维护时间范围 1989-12-31 至今
+
+​ 更新频率和时间：每季度财报公布日，当日 19 点
+
+​ 表名: deriv_finance_indicator
+
+| 列名                  | 列的含义                                      | 单位 | 释义                                                                                                                            |
+| :-------------------- | :-------------------------------------------- | :--- | :------------------------------------------------------------------------------------------------------------------------------ |
+| ACCDEPRT              | 累计折旧率                                    | %    | 累计折旧额/固定资产原值＊100%                                                                                                   |
+| ACCPAYRT              | 应付账款周转率                                | 次   | (主营业务成本＋期末存货成本 － 上年末存货成本)/平均应付账款余额                                                                 |
+| ACCPAYTDAYS           | 应付账款周转天数                              | 天   | 计算期天数/应付账款周转率                                                                                                       |
+| ACCRECGTURNDAYS       | 应收账款周转天数                              | 天   | 计算期天数/应收账款周转率                                                                                                       |
+| ACCRECGTURNRT         | 应收账款周转率                                | 次   | 主营业务收入净额/平均应收账款余额                                                                                               |
+| ASSLIABRT             | 资产负债率                                    | %    | 负债总额/资产总额＊100%                                                                                                         |
+| CAPEXTODEPANDAMOR     | 资本性支出/折旧与摊销                         | 倍   | 资本性支出/(固定资产折旧＋无形资产摊销＋长期待摊费用摊销)                                                                       |
+| CAPIMORTCONMS         | 资本固定化比率(含少数股权的净资产)            | %    | (资产总计 － 流动资产合计)/所有者权益合计＊100%                                                                                 |
+| CAPPRORT              | 资本金利润率                                  | %    | 利润总额/平均实收资本净额＊100%                                                                                                 |
+| CASHCONVCYCLE         | 现金周期                                      | 天   | 营业周期 － 应付账款周转天数                                                                                                    |
+| CASHOPINDEX           | 现金运营指数                                  | 倍   | 经营现金净流量/经营现金毛流量                                                                                                   |
+| CASHRT                | 现金比率                                      | %    | (货币资金＋短期投资)/流动负债＊100%                                                                                             |
+| COMPDEPRT             | 综合折旧率                                    | %    | 每年提取的折旧费/固定资产原值＊100%                                                                                             |
+| CONSVATQUICKRT        | 保守速动比率                                  | %    | (货币资金＋应收票据＋短期投资净额＋应收账款净额)/流动负债＊100%                                                                 |
+| CRPS                  | 每股资本公积金                                | 元   | 资本公积/期末股数                                                                                                               |
+| CURASSTURNDAYS        | 流动资产周转天数                              | 天   | 计算期天数/流动资产周转率                                                                                                       |
+| CURASSTURNRT          | 流动资产周转率                                | 次   | 主营业务收入净额/平均流动资产总额                                                                                               |
+| CURLIABTOLTMLIABRT    | 负债结构比率                                  | %    | 流动负债/长期负债＊100%                                                                                                         |
+| CURRENTRT             | 流动比率                                      | 倍   | 流动资产/流动负债                                                                                                               |
+| DPS                   | 每股普通股股利                                | 元   | 普通股股利/期末股数                                                                                                             |
+| EBIT                  | 息税前利润                                    | 元   | 利润总额＋利息支出                                                                                                              |
+| EBITDA                | 息税折旧摊销前利润                            | 元   | 利润总额＋利息支出＋固定资产折旧＋无形资产摊销＋长期待摊费用摊销                                                                |
+| EBITDAMARGIN          | 息税折旧摊销前利润率                          | %    | (利润总额＋利息支出＋固定资产折旧＋无形资产摊销＋长期待摊费用摊销)/主营业务收入净额＊100%                                       |
+| EBITDAPS              | 每股息税折旧摊销前利润\_期末股数              | 元   | (利润总额＋利息支出＋固定资产折旧＋无形资产摊销＋长期待摊费用摊销)/期末股数                                                     |
+| EBITDASCOVER          | EBITDA 利息保障倍数                           | 倍   | 息税折旧摊销前利润/利息支出                                                                                                     |
+| EBITDATOTDEBT         | 息税折旧摊销前利润/负债合计                   | 倍   | 息税折旧摊销前利润/负债合计                                                                                                     |
+| EBITMARGIN            | 息税前利润率                                  | %    | (利润总额＋利息支出)/主营业务收入净额＊100%                                                                                     |
+| EBITPS                | 每股息税前利润                                | 元   | (利润总额＋利息支出)/期末股数                                                                                                   |
+| EBITSCOVER            | 已获利息倍数                                  | 倍   | 息税前利润/利息支出                                                                                                             |
+| EBITTOTOPI            | 息税前利润/营业总收入                         | 倍   | 息税前利润/营业总收入                                                                                                           |
+| EM                    | 权益乘数                                      | 倍   | 期末总资产/归属母公司的期末股东权益                                                                                             |
+| EMCONMS               | 权益乘数(含少数股权的净资产)                  | 倍   | 期末总资产/含少数股权的期末股东权益                                                                                             |
+| EPSDILUTED            | 摊薄每股收益\_期末股数                        | 元   | 归属母公司的净利润/期末股数                                                                                                     |
+| EPSDILUTEDCUT         | 摊薄每股收益*期末股数*扣除非经常损益          | 元   | 扣除非经常性损益后的净利润/期末股数                                                                                             |
+| EPSDILUTEDNEWP        | 摊薄每股收益\_最新股数                        | 元   | 归属母公司的净利润/最新股数                                                                                                     |
+| EPSDILUTEDOP          | 摊薄每股收益(营业利润)                        | 元   | 营业利润/期末股数                                                                                                               |
+| EQUCONMS              | 含少数股权的净资产                            | 元   | 含少数股权的净资产                                                                                                              |
+| EQURT                 | 产权比率                                      | %    | 负债总额/归属母公司的所有者权益总额＊100%                                                                                       |
+| EQUTOFA               | 归属母公司的净资产/固定资产                   | 倍   | 归属母公司的股东权益合计/固定资产净额                                                                                           |
+| EQUTOIC               | 归属母公司净的资产/归属母公司的投入资本       | 倍   | 归属母公司净资产/归属母公司的投入资本                                                                                           |
+| EQUTOICCONMS          | 归属母公司的净资产/含少数股权的投入资本       | 倍   | 归属母公司的净资产/含少数股权的投入资本                                                                                         |
+| EQUTOTDEBT            | 归属母公司的净资产/总债务                     | 倍   | 归属母公司的净资产/总债务                                                                                                       |
+| EQUTOTLIAB            | 归属母公司的净资产/负债合计                   | 倍   | 归属母公司的净资产/负债合计                                                                                                     |
+| EQUTURNRT             | 股东权益周转率                                | 次   | 主营业务收入净额/归属母公司的平均股东权益合计                                                                                   |
+| EQUTURNRTCONMS        | 股东权益周转率(含少数股权权益)                | 次   | 主营业务收入净额/含少数股权的平均股东权益合计                                                                                   |
+| FAPROPORTION          | 固定资产比重                                  | %    | 固定资产净额/资产总额＊100%                                                                                                     |
+| FAPRORT               | 固定资产利润率                                | %    | 归属母公司的净利润/平均固定资产合计＊100%                                                                                       |
+| FATURNDAYS            | 固定资产周转天数                              | 天   | 计算期天数/固定资产周转率                                                                                                       |
+| FATURNRT              | 固定资产周转率                                | 次   | 主营业务收入净额/平均固定资产净值                                                                                               |
+| FCFE                  | 股东自由现金流量                              | 元   | 企业自由现金流量＋(发行的新债 － 清偿的旧债)                                                                                    |
+| FCFEPS                | 每股股东自由现金流量                          | 元   | 股东自由现金流量/期末股数                                                                                                       |
+| FCFF                  | 企业自由现金流量                              | 元   | 利润总额＋利息支出＋固定资产折旧＋无形资产摊销＋长期待摊费用摊销 － 所得税 － 资本性支出 － 营运资本净增加                      |
+| FCFFPS                | 每股企业自由现金流量                          | 元   | 企业自由现金流量/期末股数                                                                                                       |
+| FINLEXPRT             | 财务费用率                                    | %    | 财务费用/主营业务收入净额＊100%                                                                                                 |
+| INCOTAXTOTP           | 所得税/利润总额                               | 倍   | 所得税/利润总额                                                                                                                 |
+| INTCASHREVRT          | 投资收益收现率                                | %    | 取得投资收益收到的现金/投资收益＊100％                                                                                          |
+| INTEXPCONCAPINT       | 利息支出\_包含资本化利息                      | 元   | 净利息支出＋资本化利息                                                                                                          |
+| INTEXPCUTCAPINT       | 利息支出\_扣除资本化利息                      | 元   | 净利息支出                                                                                                                      |
+| INVTOCURASSRT         | 存货资产构成率                                | %    | 存货/流动资产＊100%                                                                                                             |
+| INVTURNDAYS           | 存货周转天数                                  | 天   | 计算期天数/存货周转率                                                                                                           |
+| INVTURNRT             | 存货周转率                                    | 次   | 主营业务成本/平均存货余额                                                                                                       |
+| LIQDVALUERT           | 清算价值比率 1                                | %    | (资产总计 － 无形及其他资产合计)/负债合计＊100%                                                                                 |
+| LOANLOSSRESTOTLOANRT  | 贷款损失准备金/贷款总额                       | %    | 贷款损失准备金/贷款总额＊100%                                                                                                   |
+| LTMASSRT              | 长期资产适合率                                | %    | (含少数股权的所有者权益合计＋长期负债)/(固定资产合计＋长期投资合计)＊100%                                                       |
+| LTMDEBT               | 长期债务                                      | 元   | 长期借款＋应付长期债券                                                                                                          |
+| LTMDEBTTOWORKCAP      | 长期债务/营运资金                             | 倍   | 长期债务/营运资金                                                                                                               |
+| LTMLIABTOEQU          | 长期负债/归属母公司的净资产                   | 倍   | 长期负债/归属母公司的净资产                                                                                                     |
+| LTMLIABTOOPCAP        | 长期负债与营运资本比率                        | %    | 长期负债/营运资本＊100%                                                                                                         |
+| LTMLIABTOTA           | 长期负债/总资产                               | 倍   | 长期负债/总资产                                                                                                                 |
+| LTMLIABTOTACONMS      | 资本化比率\_含少数股权的净资产                | %    | 长期负债合计/(长期负债合计＋所有者权益合计)＊100%                                                                               |
+| MGTEXPRT              | 管理费用率                                    | %    | 管理费用/主营业务收入净额＊100%                                                                                                 |
+| NAPS                  | 摊薄每股净资产\_期末股数                      | 元   | 归属母公司的股东权益合计/期末股数                                                                                               |
+| NAPSADJ               | 调整后每股净资产\_期末股数                    | 元   | (归属母公司的股东权益合计 － 三年以上的应收帐款 － 待摊费用 － 待处理(流动、固定)资产净损失 － 开办费 － 长期待摊费用)/期末股数 |
+| NAPSNEWP              | 每股净资产\_最新股数                          | 元   | 归属母公司的股东权益合计/最新股数                                                                                               |
+| NCFPS                 | 每股现金流量净额                              | 元   | 现金及现金等价物净增加额/期末股数                                                                                               |
+| NDEBT                 | 净债务                                        | 元   | 总债务 － 货币资金 － 短期投资净额 － 一年内到期的长期债权投资                                                                  |
+| NDEBTTOEQU            | 净债务/归属母公司的净资产                     | 倍   | 净债务/归属母公司的净资产                                                                                                       |
+| NFART                 | 固定资产净值率                                | %    | 固定资产净值/固定资产原值＊100%                                                                                                 |
+| NITOCURASS            | 流动资产利润率                                | %    | 归属母公司的净利润/流动资产＊100%                                                                                               |
+| NNONOPITOTP           | 营业外收支净额/利润总额                       | 倍   | 营业外收支净额/利润总额                                                                                                         |
+| NONINTCURLIABS        | 无息流动负债                                  | 元   | 流动负债 － 短期债务                                                                                                            |
+| NONINTNONCURLIAB      | 无息非流动负债                                | 元   | 非流动负债 － 长期债务                                                                                                          |
+| NOPCAPTURNRT          | 净营运资本周转率                              | 次   | 营业收入/营运资本＊100%                                                                                                         |
+| NOPI                  | 经营活动净收益                                | 元   | 营业总收入 － 营业总成本                                                                                                        |
+| NPCONMSTOAVGTA        | 总资产净利率\_平均(含少数股东损益的净利润)    | %    | 含少数股东损益的净利润/平均总资产＊100%                                                                                         |
+| NPCONMSTOTP           | 含少数股东损益的净利润/利润总额               | 倍   | 含少数股东损益的净利润/利润总额                                                                                                 |
+| NPCUT                 | 扣除非经常性损益后的净利润                    | 元   | 归属母公司的净利润 － 非经常性损益合计                                                                                          |
+| NPCUTTONP             | 扣除非经常性损益后的净利润/归属母公司的净利润 | 倍   | 扣除非经常性损益后的净利润/归属母公司的净利润                                                                                   |
+| NPGRT                 | 归属母公司净利润增长率                        | %    | (本期归属母公司净利润 － 上年同期归属母公司净利润)/上年同期归属母公司净利润＊100%                                               |
+| NPTOAVGTA             | 总资产净利率\_平均                            | %    | 归属母公司的净利润/平均总资产＊100%                                                                                             |
+| NPTONOCONMS           | 归属母公司股东的净利润/含少数股东损益的净利润 | 倍   | 归属母公司股东的净利润/含少数股东损益的净利润                                                                                   |
+| NPTOTP                | 归属母公司的净利润/利润总额                   | 倍   | 归属母公司的净利润/利润总额                                                                                                     |
+| NTANGA                | 有形资产净值                                  | 元   | 归属母公司的股东权益合计 － 无形资产及其他资产 － 递延税项借项                                                                  |
+| NTANGASSTONDEBT       | 有形资产净值/净债务                           | 倍   | 有形资产净值/净债务                                                                                                             |
+| NTANGASSTOTDEBT       | 有形资产净值/总债务                           | 倍   | 有形资产净值/总债务                                                                                                             |
+| NTANGASSTOTLIAB       | 有形资产净值/负债合计                         | 倍   | 有形资产净值/负债合计                                                                                                           |
+| NVALCHGIT             | 价值变动净收益                                | 元   | 公允价值变动净收益＋投资净收益＋汇兑净收益                                                                                      |
+| NVALCHGITOTP          | 价值变动净收益/利润总额                       | 倍   | 价值变动净收益/利润总额                                                                                                         |
+| OPANCFTOOPNI          | 经营活动产生的现金流量净额/经营活动净收益     | 倍   | 经营活动产生的现金流量净额/经营活动净收益                                                                                       |
+| OPANITOTP             | 经营活动净收益/利润总额                       | %    | （营业总收入 － 营业总成本）/利润总额＊100%                                                                                     |
+| OPCAPTOTART           | 营运资本对总资产比率                          | %    | 营运资本/资产总额＊100%                                                                                                         |
+| OPCYCLE               | 营业周期                                      | 天   | 存货周转天数＋应收账款周转天数                                                                                                  |
+| OPEXPRT               | 营业费用率                                    | %    | 营业费用/主营业务收入净额＊100%                                                                                                 |
+| OPGPMARGIN            | 营业毛利润                                    | 元   | 营业收入 － 营业成本                                                                                                            |
+| OPICFTOTICF           | 经营活动现金流入占现金流入总量比率            | %    | 经营活动现金流入/现金流入总量＊100%                                                                                             |
+| OPNCFPS               | 每股经营活动产生的现金流量净额                | 元   | 经营性现金流量/期末股数                                                                                                         |
+| OPNCFSHTINVETOSHTDEBT | (经营活动净现金＋短期投资)/短期债务           | 倍   | (经营现金流＋短期投资净额＋一年内到期的长期债券投资)/短期债务                                                                   |
+| OPNCFTOCAPEX          | 经营性现金流量对资本性支出比率                | %    | 经营活动现金流量净额/资本性支出总额＊100%                                                                                       |
+| OPNCFTODEPANDAMOR     | 经营活动净现金/折旧与摊销                     | 倍   | 经营活动现金净流量/（折旧＋摊销）                                                                                               |
+| OPNCFTOINTEXP         | 经营活动净现金/利息支出                       | 倍   | 经营活动净现金/利息支出                                                                                                         |
+| OPNCFTOLTMLIAB        | 经营活动净现金/长期负债                       | 倍   | 经营活动净现金/长期负债                                                                                                         |
+| OPNCFTONDABT          | 经营活动净现金/净债务                         | 倍   | 经营活动净现金/净债务                                                                                                           |
+| OPNCFTONP             | 经营活动净现金/归属母公司的净利润             | 倍   | 经营活动净现金/归属母公司的净利润                                                                                               |
+| OPNCFTONPCONMS        | 经营活动净现金/含少数股东损益的净利润         | 倍   | 经营活动净现金/含少数股东损益的净利润                                                                                           |
+| OPNCFTOOPPRO          | 经营活动净现金/营业利润                       | 倍   | 经营活动净现金/营业利润                                                                                                         |
+| OPNCFTOOPTI           | 经营性现金净流量/营业总收入                   | 倍   | 经营性现金净流量/营业总收入                                                                                                     |
+| OPNCFTOSHTDEBT        | 经营活动净现金/短期债务                       | 倍   | 经营活动净现金/短期债务                                                                                                         |
+| OPNCFTOSI             | 经营活动净现金/销售收入                       | 倍   | 经营现金净流量/主营业务收入净额                                                                                                 |
+| OPNCFTOTA             | 经营活动净现金/总资产                         | 倍   | 经营活动净现金/总资产                                                                                                           |
+| OPNCFTOTDEBT          | 经营活动净现金/总债务                         | 倍   | 经营活动净现金/总债务                                                                                                           |
+| OPNCFTOTLIAB          | 经营活动净现金/总负债                         | 倍   | 经营活动净现金/总负债                                                                                                           |
+| OPNCFTOTNCF           | 经营活动净现金/总净现金流量                   | 倍   | 经营活动产生的现金流量净额/现金及现金等价物净增加额                                                                             |
+| OPPRORT               | 营业利润率                                    | %    | 营业利润/营业收入＊100%                                                                                                         |
+| OPPROTOTCRT           | 成本费用营业利润率                            | %    | 营业利润/成本费用总额＊100%                                                                                                     |
+| OPPTOTP               | 营业利润/利润总额                             | 倍   | 营业利润/利润总额                                                                                                               |
+| OPREVPS               | 每股营业收入                                  | 元   | 主营业务收入净额/期末股数                                                                                                       |
+| OPREVTOCURASS         | 流动资产营业利润率                            | %    | 营业利润/流动资产＊100%                                                                                                         |
+| PROTOTCRT             | 成本费用利润率                                | %    | 利润总额/成本费用总额＊100%                                                                                                     |
+| QUICKRT               | 速动比率                                      | 倍   | (流动资产 － 存货)/流动负债                                                                                                     |
+| REPS                  | 每股留存收益                                  | 元   | (盈余公积＋未分配利润)/期末股数                                                                                                 |
+| ROA                   | 总资产报酬率                                  | %    | 息税前利润/平均总资产＊100%                                                                                                     |
+| ROAAANNUAL            | 年化总资产净利率                              | %    | 总资产净利率＊12/报告期所占月数                                                                                                 |
+| ROAANNUAL             | 年化总资产报酬率                              | %    | 总资产报酬率＊12/报告期所占月数                                                                                                 |
+| ROEANNUAL             | 年化净资产收益率                              | %    | 净资产收益率＊12/报告期所占月数                                                                                                 |
+| ROEAVG                | 净资产收益率\_平均                            | %    | 归属母公司的净利润/归属母公司的平均股东权益合计＊100%                                                                           |
+| ROEAVGCUT             | 净资产收益率\_平均(扣除非经常损益)            | %    | 扣除后净利润/归属母公司的平均股东权益合计＊100%                                                                                 |
+| ROEBYMINNPORNPCUT     | 净资产收益率*扣除前后净利润孰低*归属母公司    | %    | min(归属母公司的净利润,扣除非经常性损益后的净利润)/平均归属母公司的股东权益＊100%                                               |
+| ROEDILUTED            | 摊薄净资产收益率                              | %    | 归属母公司的净利润/归属母公司的股东权益合计＊100%                                                                               |
+| ROEDILUTEDCUT         | 摊薄净资产收益率\_扣除非经常损益              | %    | 扣除非经常性损益后的净利润/归属母公司的股东权益合计＊100%                                                                       |
+| ROIC                  | 投入资本回报率                                | %    | 归属母公司的净利润/归属母公司的平均投入资本                                                                                     |
+| ROTA                  | 总资本回报率                                  | %    | (利润总额＋利息支出)/归属母公司的平均投入资本＊100%                                                                             |
+| SCASHREVTOOPIRT       | 销售商品提供劳务收到的现金/营业收入           | 倍   | 销售商品提供劳务收到的现金/营业收入                                                                                             |
+| SCOSTRT               | 销售成本率                                    | %    | 主营业务成本/主营业务收入净额＊100%                                                                                             |
+| SGPMARGIN             | 销售毛利率                                    | %    | (主营业务收入净额 － 主营业务成本)/主营业务收入净额＊100%                                                                       |
+| SHTDEBT               | 短期债务                                      | 元   | 短期借款＋应付票据＋一年内到期的长期借款＋应付短期债券                                                                          |
+| SHTLIABTOTLIABRT      | 短期负债/负债总额                             | 倍   | 短期负债/负债总额                                                                                                               |
+| SNPMARGINCONMS        | 销售净利率(含少数股权权益)                    | %    | 含少数股东损益的净利润/主营业务收入净额＊100%                                                                                   |
+| SRPS                  | 每股盈余公积金                                | 元   | 盈余公积/期末股数                                                                                                               |
+| TAAVG                 | 平均资产总额                                  | 元   | (期末总资产＋期初总资产)/2                                                                                                      |
+| TAGRT                 | 营业总收入增长率                              | %    | (本期营业总收入 － 上年同期营业总收入)/上年同期营业总收入＊100%                                                                 |
+| TANGASSTOTA           | 有形资产/总资产                               | 倍   | 有形资产/总资产                                                                                                                 |
+| TATURNDAYS            | 总资产周转天数                                | 天   | 计算期天数/总资产周转率                                                                                                         |
+| TATURNRT              | 总资产周转率                                  | 次   | 主营业务收入净额/平均资产总额                                                                                                   |
+| TC                    | 成本费用总额                                  | 元   | 主营业务成本＋营业费用＋管理费用＋财务费用                                                                                      |
+| TCAP                  | 总资本                                        | 元   | 总债务＋含少数股权的所有者权益合计                                                                                              |
+| TCEXPRT               | 成本费用率                                    | %    | 成本费用总额/主营业务收入净额＊100%                                                                                             |
+| TDEBT                 | 总债务                                        | 元   | 长期债务＋短期债务                                                                                                              |
+| TDEBTTOFART           | 有形净值债务率                                | %    | 负债总额/有形资产净值＊100%                                                                                                     |
+| TDEBTTOIC             | 总债务/归属母公司的投入资本                   | 倍   | 总债务/归属母公司的投入资本                                                                                                     |
+| TDEBTTOICCONMS        | 总债务/含少数股权的投入资本                   | 倍   | 总债务/含少数股权的投入资本                                                                                                     |
+| TDTOEBITDA            | 总债务/EBITDA                                 | 倍   | 总债务/息税折旧摊销前利润                                                                                                       |
+| TOPREVPS              | 每股营业总收入                                | 元   | 营业总收入/期末股数                                                                                                             |
+| TOTIC                 | 投入资本                                      | 元   | 归属母公司的股东权益＋总债务                                                                                                    |
+| TPTOEBIT              | 利润总额/息税前利润                           | 倍   | 利润总额/息税前利润                                                                                                             |
+| TRIEXP                | 三项费用                                      | 元   | 营业费用＋管理费用＋财务费用                                                                                                    |
+| TRIEXPRT              | 三项费用比重                                  | %    | (营业费用＋管理费用＋财务费用)/主营业务收入净额＊100%                                                                           |
+| TRIEXPTOTOPI          | 三项费用占营业总收入比率                      | %    | 三项费用/营业总收入＊100%                                                                                                       |
+| UPPS                  | 每股未分配利润                                | 元   | 未分配利润/期末股数                                                                                                             |
+| WORKCAP               | 营运资金                                      | 元   | 流动资产 － 流动负债                                                                                                            |
+
+---
+
+## 4. 行业数据
+
+### **证监会二级行业**
+
+| 代码 | 名称                                     |
+| :--- | :--------------------------------------- |
+| A01  | 农业                                     |
+| A02  | 林业                                     |
+| A03  | 畜牧业                                   |
+| A04  | 渔业                                     |
+| A05  | 农、林、牧、渔服务业                     |
+| B06  | 煤炭开采和洗选业                         |
+| B07  | 石油和天然气开采业                       |
+| B08  | 黑色金属矿采选业                         |
+| B09  | 有色金属矿采选业                         |
+| B11  | 开采辅助活动                             |
+| C13  | 农副食品加工业                           |
+| C14  | 食品制造业                               |
+| C15  | 酒、饮料和精制茶制造业                   |
+| C17  | 纺织业                                   |
+| C18  | 纺织服装、服饰业                         |
+| C19  | 皮革、毛皮、羽毛及其制品和制鞋业         |
+| C20  | 木材加工和木、竹、藤、棕、草制品业       |
+| C21  | 家具制造业                               |
+| C22  | 造纸和纸制品业                           |
+| C23  | 印刷和记录媒介复制业                     |
+| C24  | 文教、工美、体育和娱乐用品制造业         |
+| C25  | 石油加工、炼焦和核燃料加工业             |
+| C26  | 化学原料和化学制品制造业                 |
+| C27  | 医药制造业                               |
+| C28  | 化学纤维制造业                           |
+| C29  | 橡胶和塑料制品业                         |
+| C30  | 非金属矿物制品业                         |
+| C31  | 黑色金属冶炼和压延加工业                 |
+| C32  | 有色金属冶炼和压延加工业                 |
+| C33  | 金属制品业                               |
+| C34  | 通用设备制造业                           |
+| C35  | 专用设备制造业                           |
+| C36  | 汽车制造业                               |
+| C37  | 铁路、船舶、航空航天和其他运输设备制造业 |
+| C38  | 电气机械和器材制造业                     |
+| C39  | 计算机、通信和其他电子设备制造业         |
+| C40  | 仪器仪表制造业                           |
+| C41  | 其他制造业                               |
+| C42  | 废弃资源综合利用业                       |
+| D44  | 电力、热力生产和供应业                   |
+| D45  | 燃气生产和供应业                         |
+| D46  | 水的生产和供应业                         |
+| E47  | 房屋建筑业                               |
+| E48  | 土木工程建筑业                           |
+| E49  | 建筑安装业                               |
+| E50  | 建筑装饰和其他建筑业                     |
+| F51  | 批发业                                   |
+| F52  | 零售业                                   |
+| G53  | 铁路运输业                               |
+| G54  | 道路运输业                               |
+| G55  | 水上运输业                               |
+| G56  | 航空运输业                               |
+| G58  | 装卸搬运和运输代理业                     |
+| G59  | 仓储业                                   |
+| G60  | 邮政业                                   |
+| H61  | 住宿业                                   |
+| H62  | 餐饮业                                   |
+| I63  | 电信、广播电视和卫星传输服务             |
+| I64  | 互联网和相关服务                         |
+| I65  | 软件和信息技术服务业                     |
+| J66  | 货币金融服务                             |
+| J67  | 资本市场服务                             |
+| J68  | 保险业                                   |
+| J69  | 其他金融业                               |
+| K70  | 房地产业                                 |
+| L71  | 租赁业                                   |
+| L72  | 商务服务业                               |
+| M73  | 研究和试验发展                           |
+| M74  | 专业技术服务业                           |
+| N77  | 生态保护和环境治理业                     |
+| N78  | 公共设施管理业                           |
+| P82  | 教育                                     |
+| Q83  | 卫生                                     |
+| R85  | 新闻和出版业                             |
+| R86  | 广播、电视、电影和影视录音制作业         |
+| R87  | 文化艺术业                               |
+| S90  | 综合                                     |
+
+---
+
+## 5. 分红派息
+
+目前，掘金量化支持查询**A 股上市公司**从上市以来的分红派息情况。
+
+##### **Python 数据接口**
+
+1.[get_dividend - 查询分红送配](https://www.myquant.cn/docs/python/python_select_api.html#d4ad61f2fc1fe9d4)
+
+**示例**
+
+获取“SHSE.600000”在 2000-01-01 -- 2017-12-31 分红情况：
+
+```python
+get_dividend(symbol='SHSE.600000',start_date='2000-01-01', end_date='2017-12-31', df=True)
+```
+
+返回结果：
+
+```python
+ symbol  cash_div  share_div_ratio  ...  allotment_ratio  allotment_price                created_at
+
+0   SHSE.600000     0.150              0.0  ...              0.0              0.0 2000-07-06 00:00:00+08:00
+1   SHSE.600000     0.200              0.0  ...              0.0              0.0 2002-08-22 00:00:00+08:00
+2   SHSE.600000     0.100              0.0  ...              0.0              0.0 2003-06-23 00:00:00+08:00
+3   SHSE.600000     0.110              0.0  ...              0.0              0.0 2004-05-20 00:00:00+08:00
+4   SHSE.600000     0.120              0.0  ...              0.0              0.0 2005-05-12 00:00:00+08:00
+5   SHSE.600000     0.130              0.0  ...              0.0              0.0 2006-05-25 00:00:00+08:00
+6   SHSE.600000     0.150              0.0  ...              0.0              0.0 2007-07-18 00:00:00+08:00
+7   SHSE.600000     0.160              0.3  ...              0.0              0.0 2008-04-24 00:00:00+08:00
+8   SHSE.600000     0.230              0.4  ...              0.0              0.0 2009-06-09 00:00:00+08:00
+9   SHSE.600000     0.150              0.3  ...              0.0              0.0 2010-06-10 00:00:00+08:00
+10  SHSE.600000     0.160              0.3  ...              0.0              0.0 2011-06-03 00:00:00+08:00
+11  SHSE.600000     0.300              0.0  ...              0.0              0.0 2012-06-26 00:00:00+08:00
+12  SHSE.600000     0.550              0.0  ...              0.0              0.0 2013-06-03 00:00:00+08:00
+13  SHSE.600000     0.660              0.0  ...              0.0              0.0 2014-06-24 00:00:00+08:00
+14  SHSE.600000     0.757              0.0  ...              0.0              0.0 2015-06-23 00:00:00+08:00
+15  SHSE.600000     0.515              0.0  ...              0.0              0.0 2016-06-23 00:00:00+08:00
+16  SHSE.600000     0.200              0.0  ...              0.0              0.0 2017-05-25 00:00:00+08:00
+
+```
+
+---

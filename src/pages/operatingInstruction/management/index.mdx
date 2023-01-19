@@ -1,0 +1,141 @@
+# 账户管理
+
+## 1. 添加账户
+
+账户管理是掘金量化终端五大板块之一。主要功能就是新建并且管理账户。
+
+账户有两种类型，分别是仿真账户和实盘账户。其中，可通过选择“柜台类型”建立（仿真）股票或（仿真）期货账户。
+
+下面分别演示添加仿真账户和实盘账户的具体步骤。
+
+#### 1.添加仿真账户
+
+1、进入“账户管理”板块，选择"仿真账户"，然后点击页面右侧的“添加仿真账户”；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6e09adb1be8.png)
+
+2、在弹窗中的相应位置输入账户名称和期初资金；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6e354704b71.png)
+
+3、选择柜台类型；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6e629ba81e0.png)
+
+4、选择撮合方式；
+
+精准撮合：交易时段撮合；委托按价格优先、时间优先规则，与实时行情盘口数据精准撮合。
+
+模拟撮合：7\*24 小时撮合；委托与交易标的的最新价或指定价撮合；多用于策略调试或系统测试场景。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6e90663eeb3.png)
+
+5、点击“确认”按钮，账户添加完成。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6ebf192ceb8.png)
+
+#### 2.添加实盘账户
+
+添加实盘账户之前需要先提交申请。查看：[实盘申请方式](https://www.myquant.cn/docs/gx1/868.html)
+
+此处默认您已申请成功，下面演示添加实盘账户的步骤。
+
+**步骤**
+
+1、在“账户管理”板块，选择“实盘账户”，然后点击页面右侧的“添加实盘账户”；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6eeef3a1a95.png)
+
+2、可以看到申请的柜台，填入账户信息后点击确认；
+
+> 券商版的实盘请联系券商后台管理人员授权
+
+![账户信息](https://www.myquant.cn/uploads/201803/attach_152007bc8c0443b2.png)
+
+3、账户添加成功。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6f2d4b76cbc.png)
+
+如要使用该账户进行交易，需要先连接账户，具体操作请看下一篇。
+
+> 连接账户时需要输入资金账户密码
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f6f70e501a00.png)
+
+---
+
+## 2. 账户 ID
+
+账户 ID 与策略 ID 不同，在获取时请注意区别。[查看策略 ID 获取入口](https://www.myquant.cn/docs/m111/801.html#:~:text=python%E8%A7%A3%E6%9E%90%E5%99%A8-,4%E8%8E%B7%E5%8F%96%E7%AD%96%E7%95%A5ID,-%E7%AD%96%E7%95%A5ID%E7%94%A8%E4%BA%8E)
+
+如需获取账户 ID，在“账户管理”板块点击“复制账户 ID”即可。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f7118e9d22b6.png)
+
+---
+
+## 3. 连接账户
+
+在掘金量化终端，有多个场景会提示您需要连接账户。
+
+比如，在“量化交易”板块进行仿真交易的时候，又或者是在“智能策略”板块，想通过智能策略下单时。如果您在当前的页面找不到连接的入口，可选择切换到”账户管理“板块进行连接。
+
+**步骤**
+
+1、进入“账户管理”板块，选择"仿真账户"，在对应账户的那一行选择“连接”；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f718a60b18a0.png)
+
+2、如果该账户是您默认的常用账户，可以勾选“自动登录”后再点击“确认连接”。下次当您在登录终端时，该账户就会自动连接，无需再手动操作。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f71c105fad56.png)
+
+如果您连接的是实盘账户，那么在连接时需要输入资金账户密码。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f71f8277aa53.png)
+
+3、点击确认后，可在账户列表直接查看该账户当前的连接状态以及是否启用了自动登录。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f722574ba89e.png)
+
+---
+
+## 4. 手续费设置
+
+在“账户管理”板块，点击“手续费”，在弹窗中即可修改手续费。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f72aa635332f.png)
+
+弹窗中所列为掘金仿真柜台默认的手续费，直接在具体项中修改即可，修改后的手续费会顶置标明，可以点击恢复默认值。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f72d92474075.png)
+
+---
+
+## 5. 出入金设置
+
+在“账户管理”板块，点击“出入金”，在弹窗中填入要转入或转出的金额，点击确定即可。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f74fd520cae9.png)
+
+---
+
+## 6. 删除账户
+
+在“账户管理”板块，可以通过点击最右侧的垃圾桶图标，对账户进行删除。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f7681c9cc5c3.png)
+
+但在删除账户前，需要先断开账户连接。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f76b03ea24c4.png)
+
+您可在账户列表页面点击”断开“并确认；
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f76dd94c8781.png)
+
+连接断开后，再点击删除的图标即可删除账户。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3f770fbd52b41.png)
+
+---

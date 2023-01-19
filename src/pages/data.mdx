@@ -1,0 +1,171 @@
+# 数据
+
+数据是决策和分析的基础，数据的速度、完整性非常重要。
+
+掘金提供两大类数据获取方式：订阅数据获取实时数据、接口直通获取历史数据。
+
+下面是两个方式各自的步骤介绍。
+
+## 获取数据
+
+##### 1.通过订阅获取高频行情数据
+
+**步骤**
+
+1、设置初始化函数: init, 使用 subscribe 函数进行数据订阅；
+
+2、实现一个函数: on_bar, 来根据数据推送进行逻辑处理；
+
+3、执行策略。
+
+**描述**
+
+预先订阅所需数据，在使用时，用对应的事件函数接收数据，数据发生更新时返回，并能够返回指定格式的时间序列滑窗数据。如：
+
+```python
+# 第一步：订阅函数（参数规格）
+subscribe(标的列表，数据频率，数据序列长度);
+
+# 第二步：接收函数标识（全局变量，指定数据返回）
+On_event (全局变量，指定数据集);
+    print (指定数据集)
+    print (全局变量)
+```
+
+**示例**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+# 订阅平安银行10个长度1分钟的bar数据，然后求收盘价均值
+# 设置初始化函数, 通过订阅将需要的数据申明
+def init(context):
+    # 进行数据订阅
+    subscribe(symbols='SZSE.000001', frequency='60s', count=10)
+
+
+# 通过on_bar函数接收bar数据事件，并在该函数中求均值
+def on_bar(context,bar):
+    # 打印当前获取的bar信息
+    print(bars)
+
+    # context.data提取缓存的数据滑窗, 可用于计算指标
+    # 注意：context.data里的count要小于或等于subscribe里的count
+    data = context.data(symbols='SZSE.000001', frequency='60s', count=10, fields='close'))
+    print(data)
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-04-01 09:00:00',
+        backtest_end_time='2020-05-31 15:00:00',
+        backtest_adjust=ADJUST_NONE,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**结果保存**
+
+订阅后的数据滑窗储存在 context.data 中，提取数据需要调用 context.data()接口，可以在自定义函数 algo()中调取或是在 on_xxx()事件驱动函数中调取，调取格式为：
+
+data = context.data(标的,频率,滑窗大小,字段)
+
+##### 2. 通过接口获取数据
+
+**步骤**
+
+1、set_token 设置用户 token， 如果 token 不正确, 函数调用会抛出异常；
+
+2、调用数据查询函数， 直接进行数据查询。
+
+**描述**
+
+通过接口返回值获取数据，数据仅返回一次，如：
+
+```python
+# 数据返回=请求函数（参数规格）
+
+# 查询历史行情数据：获取指定时间段内的历史数据
+history(标的，频率，开始时间，结束时间，是否复权)
+
+# 查询基本面数据类：获取指定时间段内的历史数据
+get_fundamentals（表名，字段名，标的，开始日期，结束日期）
+
+# 查询成分股：获取指数成分股
+get_constituents（指数代码）
+
+# 查询业务数据：获取交易日期列表
+get_trading_dates（交易所，开始时间，结束时间）
+```
+
+**示例**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+# 掘金终端需要打开，接口取数是通过网络请求的方式
+# 设置token，可在用户-密钥管理里查看获取已有token ID
+set_token('your token_id')
+
+
+# 查询行情快照
+current_data = current(symbols='SZSE.000001')
+
+
+# 查询历史行情数据，并以结构方式返回
+history_data = history(symbol='SHSE.000300', frequency='1d', start_time='2010-07-28', end_time='2017-07-30', df=True)
+
+
+# 查询财务数据，在股票交易衍生表中查询几个字段的值
+get_fundamentals(table='trading_derivative_indicator', symbols='SHSE.600000, SZSE.000001', start_date='2017-01-01', end_date='2017-01-01', fields='TCLOSE,PETTMNPAAEI')
+```
+
+##### 1.1.3. 使用 Jupyter Notebook 提取数据做研究
+
+**说明**
+
+jupyter notebook 是 Anaconda 集成的工具包，安装了 anaconda 后，打开 jupyter notebook 获取数据。
+
+开始前需要先确认以下三点：
+
+- 掘金终端需要打开
+
+- jupyter notebook 的 Python 解析器已安装 gm 包（前面文档有介绍怎么下载 SDK）
+
+- 已设置 token ID（<u>获取 token ID 的方法</u>）——此处连接到对应网页
+
+**步骤**
+
+1、初始化设置，获取数据的必要代码；
+
+```python
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+#终端开启 设置token
+set_token('your token')
+```
+
+2、设置完成，提取数据 。
+
+![](http://www.myquant.cn/uploads/202111/attach_16b3985d28dcb243.png)

@@ -1,0 +1,654 @@
+# 量化工具
+
+## 1. 智能策略
+
+### 功能简介
+
+智能策略是终端集成的一系列常见的量化交易策略，从简单到复杂包括 条件单、拐点交易、网格策略、涨停开板等。帮助用户不需要编写代码就可以使用常见又经典的量化交易策略。
+
+### 智能策略界面使用
+
+所有从左边栏选择设置的智能策略全部都会在 `智能交易列表` 中显示。具体新设不同智能策略的方式请详见个智能策略说明。 当新设一个智能策略后，该策略会出现在‘监控中’界面，可以对该策略选择停止或启动，默认是启动状态。默认是启动状态。
+
+![](http://www.myquant.cn/uploads/202102/attach_166741d34e9d2bc6.png)
+
+当对一个策略点击删除或者触发了条件并且不会再触发时，这个智能策略会进入‘历史’，如果一个智能策略达到了设定的有效期。这个策略会进入‘失效’。点击刷新按钮可以手动刷新各个智能策略的状态。
+
+![](http://www.myquant.cn/uploads/202102/attach_166741ddd9f0eb68.png)
+
+### 条件单
+
+到时下单：指定一个具体的时间点，在指定的时间点进行下单。
+绝对价格：该标的的（最新价、买一价、卖一价）（大于、小于、等于）指定价格进行下单。
+涨跌幅条件：该标的的涨幅或跌幅大于、小于、等于、设定的值触发条件单（幅度是相对于昨收）
+
+![到时下单](http://www.myquant.cn/uploads/202009/attach_1636cb03890ba5a4.png)
+![绝对价格](http://www.myquant.cn/uploads/202009/attach_1636cb064df910e6.png)
+![涨跌幅条件](http://www.myquant.cn/uploads/202009/attach_1636cb096922db22.png)
+
+**注意：如果发生了除权除息等导致股票价格变动的情况会导致条件单失效。**
+
+点击终端的 `智能策略` 连接账户后选择并且连接账户后选择条件单。
+
+![](http://www.myquant.cn/uploads/202102/attach_1667419427050382.png)
+
+在弹出的窗口选择三种不同的条件单类型，进行设置。
+
+![](http://www.myquant.cn/uploads/202102/attach_1667419b7c93f1be.png)
+
+### 拐点交易
+
+买入：通过基准价与跌幅比例计算跌幅阈值价，当最新价突破跌幅阈值后，以突破后的最低价与回调比例计算回调阈值价，当最新价突破回调阈值后，以价格策略设定的报价方式挂单买入。
+
+![拐点买入](http://www.myquant.cn/uploads/202009/attach_1636fb01438b9b9e.png)
+
+卖出：通过基准价与涨幅比例计算涨幅阈值价，当最新价突破涨幅阈值后，以突破后的最高价与回调比例计算回调阈值价，当最新价突破回调阈值后，以价格策略设定的报价方式挂单卖出。
+
+![拐点卖出](http://www.myquant.cn/uploads/202009/attach_1636fb095adc02ac.png)
+
+点击拐点交易，填写参数后点击添加条件。即可设置拐点交易策略
+
+![](http://www.myquant.cn/uploads/202102/attach_166741acc1fbf145.png)
+
+### 网格交易
+
+网格交易用来在设定的范围内自动调整标的的仓位。设置的参数有初始价格中枢 p，网格宽度 w， 单次买入卖出数量 v。 假定初始持仓为 N 股，当从初始开始，股价波动到 p+w+0.01 时策略调整持仓到 N-v 股，如果继续上涨到 p+2w+0.01 策略调整持仓到 N-2v。此时如果股价跌回 p+w 策略调整持仓回到 N-v。其他可依次类推，凡是当价格上涨到指定价格超过 1 分钱时卖出，而下跌触及到指定价时买入。从初始价格向单一方向波动超过 4 个 w 的宽度后（不含 p±4w），策略不做处理。
+**示例**：比如想要对一个标的 A 执行以下操作：假设 A 现价 10 元，持有 4000 股。希望在 11 元时调整持仓为 3000 股，9 元时调整为 5000 股，12 元时调整持仓 2000 股，8 元的时候再卖出 6000 股。可以设置网格价格中枢：10，网格宽度：1 买卖数量：1000。
+
+![网格交易](http://www.myquant.cn/uploads/202009/attach_1636cb3eb63cc3a4.png)
+
+在`智能策略`页，点击 `网格交易`， 在弹出的窗口中设置证券代码为‘SHSE.600000’、价格中枢为 10 元、每格买入 100 股、价格区间为 1 元、网格个数选择 8、有效期选择‘当日有效’、然后点击添加条件按钮就可以成功设置网格交易策略了。
+
+![](http://www.myquant.cn/uploads/202102/attach_166741b7fcd13d1c.png)
+
+**注意：如果发生了除权除息等导致股票价格变动的情况会导致网格策略失效。**
+
+### 涨停开板策略
+
+跟踪一只涨停板股票，当它的买 1 封单出现绝对手数或者相对流通盘的比例小于设定值的时候触发条件。默认为 0，意思是开板触发条件。卖出股票比例参数默认全部卖出，策略的有效期默认当日有效。
+
+![涨停开板](http://www.myquant.cn/uploads/202009/attach_1636cb48dcc3467a.png)
+
+在`智能策略`页，点击 `涨停开板`， 在弹出的窗口中设置证券代码为‘SHSE.300722’、买一封盘数量低于 1 手、卖出比例填写 100%、有效期选择‘当日有效’、然后点击添加条件按钮就可以成功设置涨停开板策略了。
+
+![](http://www.myquant.cn/uploads/202102/attach_166741c050ad8fa5.png)
+
+### 自动打新股
+
+敬请期待
+
+### 自动逆回购
+
+敬请期待
+
+---
+
+## 2. 交易归档
+
+### 功能简介
+
+掘金终端全新提供了一个可视的交易数据查看与分析模块，开启数据归档后，我们会将您每日的交易情况记录起来，并生成每日摘要分析，尽力满足您盘后分析或者查询数据的需求。
+
+### 快速上手
+
+- 1、使用须知：交易时间段内关闭终端，我们将不能及时地进行归档，如下图重要提醒所示，当您关闭终端时，也可以选择归档后再退出终端
+
+![使用须知](http://www.myquant.cn/uploads/202012/attach_164e9c1182ffa574.png)
+
+![重要提示](http://www.myquant.cn/uploads/202012/attach_164e9c750de82d39.png)
+
+- 2、前往设置开启数据归档
+  默认是未开启的，如果您有需要则在右上角设置开启数据归档即可
+
+![开启数据归档](http://www.myquant.cn/uploads/202012/attach_164e9c8372bc9b64.png)
+
+- 3、选择具体日期下的具体账户
+
+![选择账户](http://www.myquant.cn/uploads/202012/attach_164e9c8b6f50c196.png)
+
+- 4、可以查看当日该账户的交易摘要、资金、持仓、成交、委托、委托流水、日志和文件单（可在当前页面查看或者打开文件所在目录查看）
+  点击文件单将直接弹出目录，可以在目录找到当天已完成的文件单
+
+![查看数据](http://www.myquant.cn/uploads/202012/attach_164e9ca46c3ce658.png)
+
+### 功能介绍
+
+#### 摘要
+
+摘要包括基本概括数据、耗时分析、委托数量与耗时占比与异常合约汇总表
+
+![摘要](http://www.myquant.cn/uploads/202012/attach_164e9cb73dcbe6c1.png)
+
+- 基本概括
+  委托数量相关的数据、成交总比数与所有委托中包含的标的个数（可以点击清单查看具体包含哪些标的）
+
+![基本概括](http://www.myquant.cn/uploads/202012/attach_164e9cfad2096976.png)
+
+- 耗时分析
+  **注：**此耗时为从委托发出，到收到柜台确定的往返时间
+  委托分布展示了所有委托的延时分布在哪个区间，关键值展示所有委托耗时的一些关键数据（极值、平均值和中位数）
+
+![耗时分析](http://www.myquant.cn/uploads/202012/attach_164e9d07c2884a62.png)
+
+- 委托数量与耗时对比
+  **注：**此耗时为从委托发出，到收到柜台确定的往返时间
+  展示了每分钟的委托数量以及对应的平均耗时
+
+![委托数量与耗时对比](http://www.myquant.cn/uploads/202012/attach_164e9d0c08f50785.png)
+
+- 异常合约汇总表
+  **注：**此统计仅适用于股票正常交易（未发生拆股、送股等情况），而且昨日数据正确，用户需要确认此前提条件后使用此异常合约统计。
+  了解以上注意事项后，点击一键统计将统计汇总异常合约，异常合约指的是差值不为 0 的合约，其中差值的计算公式为：
+  差值（正常情况下为 0） = （今日持仓-昨日持仓）-（今日买入量-今日卖出量）
+
+![异常合约汇总表](http://www.myquant.cn/uploads/202012/attach_164e9d126b8ffa5d.png)
+
+#### 资金、持仓、成交、委托和委托流水
+
+展示了该账户归档的资金、持仓、成交、委托和委托流水状态
+其中委托流水展示了按时间排布所有委托的完整状态变化过程
+
+#### 日志
+
+日志主要展示该掘金用户下所有账户的主要系统事件，不展示具体的每一笔交易事件
+
+![日志](http://www.myquant.cn/uploads/202012/attach_164e9d1928d211b4.png)
+
+#### 表格筛选
+
+每项信息可按照对应关键词筛选排序
+
+![表格筛选](http://www.myquant.cn/uploads/202012/attach_164e9d1e543fcbef.png)
+
+#### 设置
+
+![设置](http://www.myquant.cn/uploads/202012/attach_164e9d2296293632.png)
+
+- 启停交易数据归档
+  默认是停止的，点击按钮将直接生效
+
+- 交易数据推送目录的设置
+  交易归档数据默认存储在本地固定目录，可在此处进行修改，注意需要停用数据归档后才可修改
+
+- 归档数据保存期限
+  归档数据默认保存一周（七个自然日），还可设置为保存一个月、半年或长期，归档数据超出保存期限将被删除，注意需要停用数据归档后才可修改
+
+---
+
+## 3. L2 数据
+
+### level2 行情说明
+
+- L2 数据仅在券商内网环境下提供，包含股票的实时和历史的十档行情、逐笔成交、逐笔委托数据
+- L2 数据优势：延时更低、行情更新频率更快和行情深度数据更丰富
+
+### level2 行情连接
+
+- 登录终端时点击右下角的通信设置
+
+![通信设置](http://www.myquant.cn/uploads/202011/attach_164b503fece360aa.png)
+
+- 实时行情选择本地 level2 主行情
+
+![level2主行情](http://www.myquant.cn/uploads/202011/attach_164b502fc9ccf66f.png)
+
+- 最后点击返回登录
+
+### level2 实时行情
+
+| 交易所名称 | 市场代码 | 数据类型                                                                                                        | 推送频率                                                                     |
+| :--------- | :------- | :-------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
+| 上交所     | SHSE     | [Tick](../python/python_object_data.html#Tick---Tick对象)                                                       | 3s（包含十档）                                                               |
+|            |          | [Bar](../python/python_object_data.html#Bar---Bar对象)                                                          | [Bar 实时频率](../data/data_stock_now.html#6da3feb03acb4e8c 'Bar - Bar行情') |
+|            |          | [L2Transaction(逐笔成交)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Transaction - Level2 逐笔成交') | 实时推送（毫秒级别，包含每笔）                                               |
+| 深交所     | SZSE     | [Tick](../python/python_object_data.html#Tick---Tick对象)                                                       | 3s （包含十档）                                                              |
+|            |          | [Bar](../python/python_object_data.html#Bar---Bar对象)                                                          | [Bar 实时频率](../data/data_stock_now.html#6da3feb03acb4e8c 'Bar - Bar行情') |
+|            |          | [L2Transaction(逐笔成交)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Transaction - Level2 逐笔成交') | 实时推送（毫秒级别，包含每笔）                                               |
+|            |          | [L2Order(逐笔委托)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Order - Level2 逐笔委托')             | 实时推送（毫秒级别，包含每笔）                                               |
+
+### level2 历史行情
+
+支持以下多种频率的股票历史行情数据:
+
+| 交易所名称 | 市场代码 | 数据类型                                                                                                        | 数据范围                                                    |
+| :--------- | :------- | :-------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| 上交所     | SHSE     | [Tick](../python/python_object_data.html#Tick---Tick对象)                                                       | 2016-01-04 - 至今                                           |
+|            |          | [Bar](../python/python_object_data.html#Bar---Bar对象)                                                          | 任意秒数，如'30s'(2016-01-04 - 至今)                        |
+|            |          | [L2Transaction(逐笔成交)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Transaction - Level2 逐笔成交') | 2016-01-04 - 至今                                           |
+|            |          | [L2OrderQueue(委托队列)](../python/python_object_data.html#29852bf1b0fd29bb 'L2OrderQueue - Level2 委托队列')   | 2016-01-04 - 至今                                           |
+| 深交所     | SZSE     | [Tick](../python/python_object_data.html#Tick---Tick对象)                                                       | 2016-01-04 - 至今                                           |
+|            |          | [Bar](../python/python_object_data.html#Bar---Bar对象)                                                          | 任意秒数，如'30s'(2016-01-04 - 至今), 1d(2016-01-04 - 至今) |
+|            |          | [L2Transaction(逐笔成交)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Transaction - Level2 逐笔成交') | 2016-01-04 - 至今                                           |
+|            |          | [L2Order(逐笔委托)](../python/python_object_data.html#29852bf1b0fd29bb 'L2Order - Level2 逐笔委托')             | 2016-01-04 - 至今                                           |
+|            |          | [L2OrderQueue(委托队列)](../python/python_object_data.html#29852bf1b0fd29bb 'L2OrderQueue - Level2 委托队列')   | 2016-01-04 - 至今                                           |
+
+### level2 行情接口
+
+> 点击蓝色字体查看 api 具体用法
+
+###### 数据推送事件
+
+- 通过[subscribe](../python/python_subscribe.html#15ad56f8be8519c0 'subscribe - 行情订阅')订阅行情（`frequency`指定'tick', 'l2transaction', 'l2order', 'l2order_queue', [Bar 频率](../data/data_stock_now.html#6da3feb03acb4e8c 'Bar - Bar行情')）， 主动推送
+
+[on_tick - tick 数据推送事件](../python/python_data_event.html#757fbb2011e75e41 'on_tick - tick数据推送事件')
+
+[on_bar - bar 数据推送事件](../python/python_data_event.html#757fbb2011e75e41 'on_bar - bar数据推送事件')
+
+[on_l2transaction - 逐笔成交事件](../python/python_data_event.html#757fbb2011e75e41 'on_l2transaction - 逐笔成交事件')
+
+[on_l2order - 逐笔委托事件](../python/python_data_event.html#757fbb2011e75e41 'on_l2order - 逐笔委托事件')(仅支持深市股票)
+
+[on_l2order_queue - 委托队列事件](../python/python_data_event.html#757fbb2011e75e41 'on_l2order_queue - 委托队列事件')(目前还不支持)
+
+###### 查询历史行情
+
+[current - 查询当前行情快照](../python/python_select_api.html#1fdaef6807ec17d8 'current - 查询当前行情快照')
+
+[get_history_l2ticks - 查询历史 L2 Tick 行情](../python/python_select_api.html#1fdaef6807ec17d8 'get_history_l2ticks - 查询历史L2 Tick行情')
+
+[get_history_l2bars - 查询历史 L2 Bar 行情](../python/python_select_api.html#1fdaef6807ec17d8 'get_history_l2bars - 查询历史L2 Bar行情')
+
+[get_history_l2transactions - 查询历史 L2 逐笔成交](../python/python_select_api.html#1fdaef6807ec17d8 'get_history_l2transactions - 查询历史L2 逐笔成交')
+
+[get_history_l2orders -查询历史 L2 逐笔委托](../python/python_select_api.html#1fdaef6807ec17d8 'get_history_l2orders -查询历史L2 逐笔委托')(仅支持深市股票)
+
+[get_history_l2orders_queue -查询历史 L2 委托队列](../python/python_select_api.html#1fdaef6807ec17d8 'get_history_l2orders_queue -查询历史L2 委托队列')
+
+**注意：**
+1、`get_history_l2ticks`接口每次只能提取一天的数据, 如果取数时间超过一天，则返回按照结束时间的最近有一个交易日数据， 如果取数时间段超过 1 个自然月（31）天，则获取不到数据
+2、`get_history_l2bars`接口每次最多可提取 1 个自然月（31）天的数据如：2015.1.1-2015.1.31
+错误设置：（2015.1.1-2015.2.1）超出 31 天则获取不到任何数据
+3、`get_history_l2transactions`, `get_history_l2orders`和`get_history_l2orders_queue`接口每次只能提取一天的数据, 如果取数时间超过一天，则返回按照开始时间的最近有一个交易日数据
+
+### 订阅 L2 实时数据
+
+**示例：**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+def init(context):
+    # 查询L2 Tick历史行情
+    history_l2tick=get_history_l2ticks('SHSE.600519', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None,
+                        skip_suspended=True, fill_missing=None,
+                        adjust=ADJUST_NONE, adjust_end_time='', df=False)
+    print(history_l2tick[0])
+    # 查询L2 Tick实时行情
+	current_data = current(symbols='SZSE.000001')
+    print(current_data)
+    # 订阅浦发银行的逐笔成交数据
+    subscribe(symbols='SHSE.600000', frequency='l2transaction')
+    # 订阅平安银行的逐笔委托数据（仅支持深市标的）
+    subscribe(symbols='SZSE.000001', frequency='l2order')
+    # 订阅平安银行的委托队列数据
+    # subscribe(symbols='SZSE.000001', frequency='l2order_queue')
+
+
+def on_l2order(context, order):
+    # 打印逐笔成交数据
+    print(order)
+
+
+def on_l2transaction(context, transition):
+    # 打印逐笔委托数据
+    print(transition)
+
+
+# def on_l2order_queue(context, l2order_queue):
+#     # 打印委托队列数据
+#    print(l2order_queue)
+
+
+if __name__ == '__main__':
+    '''
+        strategy_id策略ID, 由系统生成
+        filename文件名, 请与本文件名保持一致
+        mode运行模式, 实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+        token绑定计算机的ID, 可在系统设置-密钥管理中生成
+        backtest_start_time回测开始时间
+        backtest_end_time回测结束时间
+        backtest_adjust股票复权方式, 不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+        backtest_initial_cash回测初始资金
+        backtest_commission_ratio回测佣金比例
+        backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-11-01 08:00:00',
+        backtest_end_time='2020-11-10 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+### 获取 L2 历史数据
+
+**示例**
+
+```python
+# coding=utf-8
+"""
+L2的历史数据提取
+"""
+
+from gm.api import *
+
+set_token('your token')
+
+# 查询历史L2 Tick行情
+history_l2tick=get_history_l2ticks('SHSE.600519', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None,
+                               skip_suspended=True, fill_missing=None,
+                               adjust=ADJUST_NONE, adjust_end_time='', df=False)
+print(history_l2tick[0])
+# 查询历史L2 Bar行情
+history_l2bar=get_history_l2bars('SHSE.600000', '60s', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None,
+                       skip_suspended=True, fill_missing=None,
+                       adjust=ADJUST_NONE, adjust_end_time='', df=False)
+print(history_l2bar[0])
+# 查询历史L2 逐笔成交
+history_transactions = get_history_l2transactions('SHSE.600000', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None, df=False)
+print(history_transactions[0])
+# 查询历史L2 逐笔委托
+history_order=get_history_l2orders('SZSE.000001', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None, df=False)
+print(history_order[0])
+# 查询历史L2 委托队列
+history_order_queue = get_history_l2orders_queue('SZSE.000001', '2020-11-23 14:00:00', '2020-11-23 15:00:00', fields=None, df=False)
+print(history_order_queue[0])
+
+```
+
+---
+
+## 4. 算法交易
+
+### 算法交易介绍
+
+掘金算法交易采用云服务算法模式，相比策略级算法交易或者本地算法交易有以下特点：
+
+- 行情/交易延迟小，委托任务的拆单算法在券商专有机房执行，专线行情+内网极速柜台接入
+- 算法可靠，服务级经典算法模型，tick 级盘口分析，并提供多项控制参数
+- 运行稳定，执行过程的母单（原始委托任务）、子单（算法根据原始委托任务自动拆解的可执行委托）、回报实时推送到本地
+
+### 基本规则
+
+- 算法交易工具仅支持股票交易
+- 部分终端版本无算法交易，以实际有算法交易的实盘为准
+- 算法交易自动拆解的子单等同于普通委托
+- 算法交易自动拆解的子单全部为限价单，且会在终端委托列表内同步显示
+- 算法交易仅管理维护本次任务算法拆解的子单，而不会参考其他等同条件下的其他单
+
+### 算法适用
+
+- 适用于母单订单量较大的各类程序化、手工交易场景及其他频繁换仓的用户；母单执行时间大于半小时以上的交易执行，效果更加显著
+
+### 算法限制
+
+- 如股票出现临时停牌或涨跌停时，有不能完整完成客户委托数量的可能
+- 用户当日委托的交易金额过大时，可能受到市场流动性不足的影响从而降低算法运行的效果，建议母单量不超过指定交易时段内预期成交量的 15%
+
+### 下单面板
+
+![算法交易下单版](http://www.myquant.cn/uploads/201903/attach_158d9b730a403220.png)
+
+点击算法交易（如果版本支持算法交易），则弹出算法交易面板，如图
+
+![](http://www.myquant.cn/uploads/202011/attach_164b06c8def4fed6.png)
+
+**算法名称**：下拉选择可供使用的算法名称，不同的算法应用于不同的交易需求，后续会不断增加算法模型
+
+- ATS-SMART 算法：根据用户委托交易特征，通过对市场高频数据的实时分析和处理，利用程序化分析动态选择最优算法执行用户委托。具有高完成度，高稳定性，高隐蔽性，低敞口等特点，在不同持仓风格场景下，中长期均体现出稳定超越 TWAP/VWAP 基准的效果
+- ZC-POV 算法：比例成交算法（Percentage of volume），通过追踪目标股票流动性，按照市场参与度完成用户委托交易。算法针对性解决股票交易中大金额委托造成的交易冲击、目的暴露、完成率低等问题，更加贴近客户的真实委托意愿
+
+**ATS-SMART 算法参数**
+
+**开始时间（P1）**：策略开始执行的时间（剔除非交易时间段）。如果开始时间早于策略下达时间点时，则使用下达时间作为开始时间
+**结束参考时间（P2）**: 结束参考时间，和结束时间一致
+**结束时间（P3）**：策略停止执行的时间（剔除非交易时间段）。过了结束时间还未完成的数量，将会自动释放到指令。算法执行的区间段，时间越短，任务执行强度（委托频率和单笔委托量）越高
+**结束时间是否有效**:算法在结束时间是否有效,如设为无效，则以收盘时间为结束时间
+**涨停时是否停止卖出**：标的在涨停时是否需要停止卖出
+**跌停时是否撤单**：标的在跌停时是否需要撤单
+**最小交易金额**：控制子单单笔委托的最小金额 该参数只适用于股票。A 股单位为元
+**基准价格：**此算法不生效
+
+> 注意：p3 必须晚于 p2，p2 必须晚于 p1，交易时长必须大于 3 分钟，不得晚于 14:55，交易数据不应该早于当前时间
+
+**ZC-POV 算法参数**
+
+**参与率**：市场参与率，即每日委托总量占市场真实交易额的比例（上交易日参考标准），默认 30%，最高委托量比例限制为 45%。
+**基准价格**：算法模型的参考基准价格，这里指限价。卖出时，当市场价格低于此价格就停止交易，再次高于此价格就恢复交易，并且补回前面应停止交易而少交易的量；买入时，当市场价格高于此价格就停止交易，再次低于此价格就恢复交易，并且补回前面应停止交易而少交易的量。当填入价格为 0 时，则不设置基准价。
+
+### 任务列表
+
+算法交易任务列表记录了母单任务列表及子单列表
+
+![算法交易任务列表](http://www.myquant.cn/uploads/202011/attach_164b0215c0813c90.png)
+
+撤销母单：算法服务会进行撤销操作，撤销当前任务并取消所有未结子单
+暂停母单：算法服务处于暂停状态，不再进行子单拆解（ATS-SMART 算法不生效）
+撤销子单：子单的独立撤销并不属于算法交易范畴，需要在普通委托的未结委托处进行撤销
+
+### 交易接口
+
+[algo_order 算法单委托](../python/python_ai_trade_api.html#c73dd5d90b8634da 'algo_order 算法交易委托')
+
+[get_algo_orders 查询算法母单](../python/python_ai_trade_api.html#c73dd5d90b8634da 'get_algo_orders 查询算法委托')
+
+[algo_order_cancel 撤销算法母单](../python/python_ai_trade_api.html#c73dd5d90b8634da 'algo_order_cancel 撤销算法委托')
+
+[algo_order_pause 暂停或启动算法母单](../python/python_ai_trade_api.html#c73dd5d90b8634da 'algo_order_pause 暂停或重启或者撤销算法委托')（ATS-SMART 算法不支持）
+
+[get_algo_child_orders 查询算法母单的所有子单](../python/python_ai_trade_api.html#c73dd5d90b8634da 'get_algo_child_orders 查询算法委托的所有子单')
+
+[on_algo_order_status 算法单状态事件](../python/python_ai_trade_api.html#c73dd5d90b8634da 'on_algo_order_status 算法单状态事件')
+
+> 注意:仅实盘支持算法单， 点击蓝色字体可获取接口具体用法
+> 接口适用于：python、C++、C#
+
+### 示例
+
+###### ATS-SMART 算法示例
+
+```python
+# coding=utf-8
+from gm.api import *
+from gm.model import DictLikeAlgoOrder
+from gm.pb.account_pb2 import AlgoOrder
+from datetime import timedelta
+
+
+"""
+算法单新增api在 sdk 的 gm.api.trade.py 文件里, 有如下函数, 具体函数签名可点进去看api文档
+
+algo_order
+algo_order_cancel
+algo_order_pause
+get_algo_child_orders
+get_algo_orders
+
+start_time	str	开始时间
+end_time_referred	str	结束参考时间(不能超过14:55:00)
+end_time	str	结束时间(不能超过14:55:00)
+end_time_valid	int	结束时间是否有效,如设为无效，则以收盘时间为结束时间, 1为有效， 0为无效
+stop_sell_when_dl	int	涨停时是否停止卖出， 1为是，0为否
+cancel_when_pl	int	跌停时是否撤单, 1为是， 0为否
+min_trade_amount	int	最小交易金额
+"""
+
+# ATS-SMART算法示例， 仅接口使用示例
+
+
+def init(context):
+
+    time = (context.now + timedelta(seconds=3)).strftime('%H:%M:%S')
+    schedule(schedule_func=algo, date_rule='1d', time_rule=time)
+
+
+def algo(context):
+    # 算法名
+    algo_name = 'ATS-SMART'
+    # 算法参数格式如下
+    algo_param = {'start_time': '13:00:00', 'end_time_referred': '14:55:00', 'end_time': '14:00:00', 'end_time_valid': 1, 'stop_sell_when_dl': 1,
+                  'cancel_when_pl': 0, 'min_trade_amount': 100000}
+    symbol = 'SHSE.600008'
+    # 基准价， 算法母单需要是限价单
+    price = current(symbol)[0]['price']
+    aorder = algo_order(symbol=symbol, volume=2000, side=OrderSide_Buy, order_type=OrderType_Limit,
+               position_effect=PositionEffect_Open, price=price, algo_name=algo_name, algo_param=algo_param)
+
+    # 提取算法单的 cl_ord_id 委托客户端ID, 用于其它api的查询, 或者撤单时用
+    context.algo_order_id = aorder[0]['cl_ord_id']
+
+    #  撤销指定cl_ord_id的算法母单
+    # aorders = get_algo_orders(account='')
+    # wait_cancel_orders = [{'cl_ord_id': aorders[0]['cl_ord_id'], 'account_id': aorders[0]['account_id']}]
+    # algo_order_cancel(wait_cancel_orders)
+
+
+
+def on_order_status(context, order):
+    # 算法子单已成
+    if order['status'] == 3:
+        # 查询指定cl_ord_id算法母单的所有子单
+        child_order = get_algo_child_orders(context.algo_order_id, account='')
+        print('算法子单: child_order ={}'.format(child_order))
+
+
+
+def on_algo_order_status(context, algo_order):
+    # type: (Context, DictLikeAlgoOrder) -> NoReturn
+    """
+    算法单状态事件. 参数algo_order为算法单的信息
+    响应算法单状态更新事情，下算法单后状态更新时被触发
+    3.0.125 后增加.
+    """
+    print('算法单状态变化: algo_order={}'.format(algo_order))
+
+    # 算法母单已报
+    if algo_order['status'] == 1:
+        # 查询算法母单， 默认账户account填空
+        aorders = get_algo_orders(account='')
+        print('算法母单: aorders ={}'.format(aorders))
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='3acc8b6e-af54-11e9-b2de-00163e0a4100',
+        filename='main.py',
+        mode=MODE_LIVE,
+        token='2c4e3c59cde776ebc268bf6d7b4c457f204482b3',
+        backtest_start_time='2020-11-02 08:00:00',
+        backtest_end_time='2020-11-02 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+###### ZC-POV 算法示例
+
+```python
+# coding=utf-8
+from gm.api import *
+from gm.model import DictLikeAlgoOrder
+from gm.pb.account_pb2 import AlgoOrder
+from datetime import timedelta
+
+
+"""
+participation_rate 市场参与率，单位%(5.0 表示5%），默认30，即30%，最大值为45
+
+"""
+
+
+# ZC-POV算法示例， 仅接口使用示例
+def init(context):
+    time = (context.now + timedelta(seconds=3)).strftime('%H:%M:%S')
+    schedule(schedule_func=algo, date_rule='1d', time_rule=time)
+
+
+def algo(context):
+    # 算法名
+    algo_name = 'ZC-POV'
+    symbol = 'SHSE.600007'
+    # 基准价， 算法母单需要是限价单
+    price = current(symbol)[0]['price']
+	# 算法参数格式如下
+    algo_param = {"participation_rate" : 15, "price": price}
+
+    aorder = algo_order(symbol=symbol, volume=1000, side=OrderSide_Buy, order_type=OrderType_Limit,
+               position_effect=PositionEffect_Open, price=price, algo_name=algo_name, algo_param=algo_param)
+    print(aorder)
+    # 提取算法单的 cl_ord_id 委托客户端ID, 用于其它api的查询, 或者撤单时用
+    context.algo_order_id = aorder[0]['cl_ord_id']
+    #  撤销指定cl_ord_id的算法母单
+    # aorders = get_algo_orders(account='')
+    # wait_cancel_orders = [{'cl_ord_id': aorders[0]['cl_ord_id'], 'account_id': aorders[0]['account_id']}]
+    # algo_order_cancel(wait_cancel_orders)
+
+
+def on_order_status(context, order):
+    # 算法子单已成
+    if order['status'] == 3:
+        # 查询指定cl_ord_id算法母单的所有子单
+        child_order = get_algo_child_orders(context.algo_order_id, account='')
+        print('算法子单: child_order ={}'.format(child_order))
+
+
+def on_algo_order_status(context, algo_order):
+    # type: (Context, DictLikeAlgoOrder) -> NoReturn
+    """
+    算法单状态事件. 参数algo_order为算法单的信息
+    响应算法单状态更新事情，下算法单后状态更新时被触发
+    3.0.125 后增加.
+    """
+    print('算法单状态变化: algo_order={}'.format(algo_order))
+    # 算法母单已报
+    if algo_order['status'] == 1:
+        # 查询算法母单， 默认账户account填空
+        aorders = get_algo_orders(account='')
+        print('算法母单: aorders ={}'.format(aorders))
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_LIVE,
+        token='token',
+        backtest_start_time='2020-11-02 08:00:00',
+        backtest_end_time='2020-11-02 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```

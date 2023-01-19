@@ -1,0 +1,3181 @@
+import { HeroPattern } from '@/components/HeroPattern'
+
+<HeroPattern />
+
+# 示例策略
+
+## 1. 双均线策略 (期货)
+
+##### **1.策略介绍**
+
+均线，一个进行形态分析时总也绕不过去的指标。
+
+均线最早由美国投资专家 Joseph E.Granville(格兰威尔)于 20 世纪中期提出，现在仍然广泛为人们使用，成为判断买卖信号的一大重要指标。从统计角度来说，均线就是历史价格的平均值，可以代表过去 N 日股价的平均走势。
+
+**2.策略逻辑**
+
+第一步：获取数据，计算长短期均线
+
+第二步：设置交易信号
+
+——当短期均线由上向下穿越长期均线时做空
+
+——当短期均线由下向上穿越长期均线时做多
+
+回测数据：SHFE.rb2101 的 60s 频度 bar 数据
+
+回测时间：2020-04-01 到 2020-05-31
+
+回测初始资金：3 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+import talib
+
+
+'''
+本策略以SHFE.rb2101为交易标的，根据其一分钟(即60s频度）bar数据建立双均线模型，
+短周期为20，长周期为60，当短期均线由上向下穿越长期均线时做空，
+当短期均线由下向上穿越长期均线时做多,每次开仓前先平掉所持仓位，再开仓。
+注：为了适用于仿真和实盘，在策略中增加了一个“先判断是否平仓成功再开仓”的判断逻辑，以避免出现未平仓成功，可用资金不足的情况。
+回测数据为:SHFE.rb2101的60s频度bar数据
+回测时间为:2020-04-01 09:00:00到2020-05-31 15:00:00
+'''
+
+
+def init(context):
+    context.short = 20                                             # 短周期均线
+    context.long = 60                                              # 长周期均线
+    context.symbol = 'SHFE.rb2101'                                 # 订阅交易标的
+    context.period = context.long + 1                              # 订阅数据滑窗长度
+    context.open_long = False                                      # 开多单标记
+    context.open_short = False                                     # 开空单标记
+    subscribe(context.symbol, '60s', count=context.period)         # 订阅行情
+
+
+def on_bar(context, bars):
+    # 获取通过subscribe订阅的数据
+    prices = context.data(context.symbol, '60s', context.period, fields='close')
+
+    # 利用talib库计算长短周期均线
+    short_avg = talib.SMA(prices.values.reshape(context.period), context.short)
+    long_avg = talib.SMA(prices.values.reshape(context.period), context.long)
+
+    # 查询持仓
+    position_long = context.account().position(symbol=context.symbol, side=1)
+    position_short = context.account().position(symbol=context.symbol, side=2)
+
+    # 短均线下穿长均线，做空(即当前时间点短均线处于长均线下方，前一时间点短均线处于长均线上方)
+    if long_avg[-2] < short_avg[-2] and long_avg[-1] >= short_avg[-1]:
+
+        # 无多仓情况下，直接开空
+        if not position_long:
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell, position_effect=PositionEffect_Open,
+                        order_type=OrderType_Market)
+            print(context.symbol, '以市价单调空仓到仓位')
+
+        # 有多仓情况下，先平多，再开空(开空命令放在on_order_status里面)
+        else:
+            context.open_short = True
+
+            # 以市价平多仓
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell, position_effect=PositionEffect_Close,
+                         order_type=OrderType_Market)
+            print(context.symbol, '以市价单平多仓')
+
+    # 短均线上穿长均线，做多（即当前时间点短均线处于长均线上方，前一时间点短均线处于长均线下方）
+    if short_avg[-2] < long_avg[-2] and short_avg[-1] >= long_avg[-1]:
+
+        # 无空仓情况下，直接开多
+        if not position_short:
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy, position_effect=PositionEffect_Open,
+                         order_type=OrderType_Market)
+            print(context.symbol, '以市价单调多仓到仓位')
+
+        # 有空仓的情况下，先平空，再开多(开多命令放在on_order_status里面)
+        else:
+            context.open_long = True
+
+            # 以市价平空仓
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                        position_effect=PositionEffect_Close, order_type=OrderType_Market)
+            print(context.symbol, '以市价单平空仓')
+
+
+def on_order_status(context, order):
+
+    # 查看下单后的委托状态
+    status = order['status']
+
+    # 成交命令的方向
+    side = order['side']
+
+    # 交易类型
+    effect = order['position_effect']
+
+    # 当平仓委托全成后，再开仓
+    if status == 3:
+
+        # 以市价开空仓，需等到平仓成功无仓位后再开仓
+        # 如果无多仓且side=2（说明平多仓成功），开空仓
+        if effect == 2 and side == 2 and context.open_short:
+            context.open_short = False
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell, position_effect=PositionEffect_Open,
+                         order_type=OrderType_Market)
+            print(context.symbol, '以市价单调空仓到仓位')
+
+        # 以市价开多仓,需等到平仓成功无仓位后再开仓
+        # 如果无空仓且side=1（说明平空仓成功），开多仓
+        if effect == 2 and side == 1 and context.open_long:
+            context.open_long = False
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy, position_effect=PositionEffect_Open,
+                         order_type=OrderType_Market)
+            print(context.symbol, '以市价单调多仓到仓位')
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-04-01 09:00:00',
+        backtest_end_time='2020-05-31 15:00:00',
+        backtest_adjust=ADJUST_NONE,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 3 万，手续费率为 0.01%，滑点比率为 0.01%，得到的回测结果如下图：
+
+![img](https://www.myquant.cn/uploads/202012/attach_164d236067e8ee04.png)
+
+策略整体收益率 5.75%，年化收益率为 39.15%，同期沪深 300 收益率为 5.22%，策略跑赢沪深 300.最大回撤为 10.32%。
+
+为了探究该策略在不同回测期以及不同品种的适用情况，对策略进行调整。
+
+调整范围主要包括：标的、回测期、均线周期，调整结果如下表所示：
+
+| 标的        | 回测期                | 均线周期 | 年化收益率 | 最大回撤 |
+| :---------- | :-------------------- | :------: | ---------: | -------: |
+| SHFE.rb2101 | 2020.04.01-2020.05.31 |  20/60   |     39.15% |   10.32% |
+| SHFE.rb2101 | 2020.06.01-2020.08.30 |  20/60   |    -29.19% |   17.82% |
+| SHFE.rb2101 | 2020.08.31-2020.10.31 |  20/60   |    -72.29% |   17.12% |
+| SHFE.rb2101 | 2020.04.01-2020.05.31 |  10/60   |    -79.71% |   15.80% |
+| SHFE.rb2101 | 2020.04.01-2020.05.31 |  30/60   |    -39.16% |   10.59% |
+| SHFE.rb2101 | 2020.04.01-2020.05.31 |  20/90   |     11.97% |    5.35% |
+| SHFE.rb2101 | 2020.04.01-2020.05.31 |  30/90   |     -1.87% |    6.60% |
+| SHFE.ag2101 | 2020.04.01-2020.05.31 |  20/60   |   -136.19% |   37.67% |
+
+根据上表可以看出，对于不同的标的、回测期、均线周期，双均线策略的收益情况差异较大。即使相同标的、相同均线周期，不同回测期收益情况也会出现较大差异。在应用时要注意风险管理，避免出现短期过拟合现象。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 2. Dual Thrust（期货）
+
+**1.策略介绍**
+
+由 Michael Chalek 在 20 世纪 80 年代开发的 Dual Thrust 策略是一个趋势跟踪策略。
+
+其核心思想是定义一个区间，区间的上界和下界分别为支撑线和阻力线。当价格超过上界时，如果持有空仓，先平再开多；如果没有仓位，直接开多。当价格跌破下界时，如果持有多仓，则先平仓，再开空仓；如果没有仓位，直接开空仓。
+
+上下界的设定是交易策略的核心部分。在计算上下界时共用到：最高价、最低价、收盘价、开盘价四个参数。
+
+公式如下：
+
+**Range = Max(HH-LC,HC-LL)**
+
+上限：Open + K1 _Range
+下限：Open + k2_ Range
+
+K1 和 K2 一般根据自己经验以及回测结果进行优化。
+
+**2.策略逻辑**
+
+第一步：设置参数 N、k1、k2
+
+第二步：计算 HH、LC、HC、LL
+
+第三步：计算 range
+
+第四步：设定做多和做空信号
+
+回测标的：SHFE.rb2010
+
+回测期：2020-02-07 15:00:00 到 2020-04-15 15:00:00
+
+回测初始资金：3 万
+
+###### **注意：若修改回测期，需要修改对应的回测标的。**
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+"""
+Dual Thrust是一个趋势跟踪系统
+计算前N天的最高价－收盘价和收盘价－最低价。然后取这2N个价差的最大值，乘以k值。把结果称为触发值。
+在今天的开盘，记录开盘价，然后在价格超过上轨（开盘＋触发值）时马上买入，或者价格低于下轨（开盘－触发值）时马上卖空。
+没有明确止损。这个系统是反转系统，也就是说，如果在价格超过（开盘＋触发值）时手头有空单，则平空开多。
+同理，如果在价格低于（开盘－触发值）时手上有多单，则平多开空。
+选用了SHFE的rb2010 在2020-02-07 15:00:00 到 2020-04-15 15:00:00' 进行回测。
+注意：
+1：为回测方便，本策略使用了on_bar的一分钟来计算，实盘中可能需要使用on_tick。
+2：实盘中，如果在收盘的那一根bar或tick触发交易信号，需要自行处理，实盘可能不会成交
+"""
+
+
+# 策略中必须有init方法
+def init(context):
+
+    # 设置要进行回测的合约（可以在掘金终端的仿真交易中查询标的代码）
+    context.symbol = 'SHFE.rb2010'  # 订阅&交易标的, 此处订阅的是上期所的螺纹钢 2010
+
+    # 设置参数
+    context.N = 5
+    context.k1 = 0.2
+    context.k2 = 0.2
+
+    # 获取当前时间
+    time = context.now.strftime('%H:%M:%S')
+
+    # 如果策略执行时间点是交易时间段，则直接执行algo定义buy_line和sell_line，以防直接进入on_bar()导致context.buy_line和context.sell_line未定义
+    if '09:00:00' < time < '15:00:00' or '21:00:00' < time < '23:00:00':
+        algo(context)
+
+    # 如果是交易时间段，等到开盘时间确保进入algo()
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '09:00:00')
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '21:00:00')
+
+    # 只需要最新价，所以只需要订阅一个, 如果用tick，次数太多，用一分钟线代替
+    subscribe(symbols=context.symbol, frequency='60s', count = 1)
+
+
+def algo(context):
+
+    # 取历史数据
+    data = history_n(symbol=context.symbol, frequency='1d', end_time=context.now,
+                     fields='symbol,open,high,low,close', count=context.N + 1, df=True)
+    # 取开盘价
+    # 回测模式下，开盘价可以直接用history_n取到
+    if context.mode == 2:
+        # 获取当天的开盘价
+        current_open = data['open'].loc[context.N]
+        # 去掉当天的实时数据
+        data.drop(context.N, inplace = True)
+    # 如果是实时模式，开盘价需要用current取到
+    else:
+        # 获取当天的开盘价
+        current_open = current(context.symbol)[0]['open']
+
+    # 计算Dual Thrust 的上下轨
+    HH = data['high'].max()
+    HC = data['close'].max()
+    LC = data['close'].min()
+    LL = data['low'].min()
+    range = max(HH - LC, HC - LL)
+    context.buy_line = current_open + range * context.k1  # 上轨
+    context.sell_line = current_open - range * context.k2  # 下轨
+
+def on_bar(context, bars):
+    # 取出订阅的这一分钟的bar
+    bar = bars[0]
+    # 取出买卖线
+    buy_line =  context.buy_line
+    sell_line = context.sell_line
+
+    # 获取现有持仓
+    position_long = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+    position_short = context.account().position(symbol=context.symbol, side=PositionSide_Short)
+
+    # 交易逻辑部分
+    # 如果超过range的上界
+    if bar.close > buy_line:
+        if position_long:  # 已经持有多仓，直接返回
+            return
+        elif position_short:  # 已经持有空仓，平仓再做多。
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            print('市价单平空仓', context.symbol)
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('市价单开多仓', context.symbol)
+        else:  # 没有持仓时，市价开多。
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('市价单开多仓', context.symbol)
+    # 如果低于range的下界
+    elif bar.close < sell_line:
+        if position_long:  # 已经持有多仓， 平多再开空。
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            print('市价单平多仓', context.symbol)
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('市价单开空仓', context.symbol)
+        elif position_short:  # 已经持有空仓，直接返回。
+            return
+        else:  # 没有持仓，直接开空
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('市价单开空仓', context.symbol)
+
+
+if __name__ == '__main__':
+    '''
+        strategy_id策略ID,由系统生成
+        filename文件名,请与本文件名保持一致
+        mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+        token绑定计算机的ID,可在系统设置-密钥管理中生成
+        backtest_start_time回测开始时间
+        backtest_end_time回测结束时间
+        backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+        backtest_initial_cash回测初始资金
+        backtest_commission_ratio回测佣金比例
+        backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-02-07 15:00:00',
+        backtest_end_time='2020-04-15 15:00:00',
+        backtest_initial_cash= 30000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 3 万，手续费率为 0.01%，滑点比率为 0.01%，N=5，K1=0.2，K2=0.2，回测期为 2020-02-07 到 2020-04-15 时，回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202103/attach_1669b4dee63616df.png)
+
+回测期策略累计收益率为 9.88%，年化收益率为 52.29%。同期沪深 300 指数收益率为-2.63%，策略跑赢沪深 300 指数。最大回撤为 5.20%，夏普比率为 2.63。
+
+为了检验策略的稳健性，设置不同的 k1、k2 参数，并且设置不同的回测期，检验回测结果。
+
+回测结果如下表所示。
+
+| K1  | K2  |        回测期         | 年化收益率 | 最大回撤 |
+| :-- | :-- | :-------------------: | :--------: | :------: |
+| 0.2 | 0.2 | 2020.02.07-2020.04.15 |   52.29%   |  5.20%   |
+| 0.3 | 0.3 | 2020.02.07-2020.04.15 |   54.93%   |  8.80%   |
+| 0.4 | 0.4 | 2020.02.07-2020.04.15 |   43.40%   |  4.58%   |
+| 0.5 | 0.5 | 2020.02.07-2020.04.15 |  -22.15%   |  7.08%   |
+| 0.5 | 0.5 | 2020.04.07-2020.06.15 |   6.43%    |  4.60%   |
+| 0.5 | 0.5 | 2020.06.07-2020.09.15 |  -24.21%   |  9.80%   |
+
+可以发现，在 2020 年 2 月-2020 年 4 月，不论 k1、k2 如何设置，收益率均维持为正，回撤比较稳定。在其他月份，回测结果较差。说明回测参数设置对于回测结果的影响较小，回测期对于回测结果的影响较大。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 3. R-Breaker（期货）
+
+**1.策略介绍**
+
+R Breaker 是一种日内回转交易策略，属于短线交易。日内回转交易是指当天买入或卖出标的后于当日再卖出或买入标的。日内回转交易通过标的短期波动盈利，低买高卖，时间短、投机性强，适合短线投资者。
+
+R Breaker 主要分为分为反转和趋势两部分。空仓时进行趋势跟随，持仓时等待反转信号反向开仓。
+
+由于我国 A 股采用的是“T+1”交易制度，为了方便起见，以期货为例演示 R Breaker 策略。
+
+反转和趋势突破的价位点根据前一交易日的收盘价、最高价和最低价数据计算得出，分别为：突破买入价、观察卖出价、反转卖出价、反转买入价、观察买入价和突破卖出价。计算方法如下：
+
+| 指标计算方法                 |
+| :--------------------------- |
+| 中心价位 P = （H + C + L）/3 |
+| 突破买入价 = H + 2P -2L      |
+| 观察卖出价 = P + H - L       |
+| 反转卖出价 = 2P - L          |
+| 反转买入价 = 2P - H          |
+| 观察买入价 = P - (H - L)     |
+| 突破卖出价 = L - 2(H - P)    |
+
+**2.策略逻辑**
+
+第一步：根据收盘价、最高价和最低价数据计算六个价位。
+
+第二步：如果是空仓条件下，如果价格超过突破买入价，则开多仓；如果价格跌破突破卖出价，则开空仓。
+
+第三步：在持仓条件下:
+
+——持多单时，当最高价超过观察卖出价，盘中价格进一步跌破反转卖出价，反手做多；
+——持空单时，当最低价低于观察买入价，盘中价格进一步超过反转买入价，反手做空。\*\*
+
+第四步：接近收盘时，全部平仓。
+
+回测标的：SHFE.rb2010
+
+回测期：2019-10-1 15:00:00 到 2020-04-16 15:00:00
+
+回测初始资金：100 万
+
+###### **注意：若修改回测期，需要修改对应的回测标的。**
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+import pandas as pd
+from gm.api import *
+from datetime import datetime, timedelta
+
+
+"""
+R-Breaker是一种短线日内交易策略
+根据前一个交易日的收盘价、最高价和最低价数据通过一定方式计算出六个价位，从大到小依次为：
+突破买入价、观察卖出价、反转卖出价、反转买入、观察买入价、突破卖出价。以此来形成当前交易
+日盘中交易的触发条件。
+追踪盘中价格走势，实时判断触发条件。具体条件如下：
+突破
+在空仓条件下，如果盘中价格超过突破买入价，则采取趋势策略，即在该点位开仓做多。
+在空仓条件下，如果盘中价格跌破突破卖出价，则采取趋势策略，即在该点位开仓做空。
+反转
+持多单，当日内最高价超过观察卖出价后，盘中价格出现回落，且进一步跌破反转卖出价构成的支撑线时，采取反转策略，即在该点位反手做空。
+持空单，当日内最低价低于观察买入价后，盘中价格出现反弹，且进一步超过反转买入价构成的阻力线时，采取反转策略，即在该点位反手做多。
+设定止损条件。当亏损达到设定值后，平仓。
+注意：
+1：为回测方便，本策略使用了on_bar的一分钟来计算，实盘中可能需要使用on_tick。
+2：实盘中，如果在收盘的那一根bar或tick触发交易信号，需要自行处理，实盘可能不会成交。
+3：本策略使用在15点收盘时全平的方式来处理不持有隔夜单的情况，实际使用中15点是无法平仓的。
+"""
+
+
+def init(context):
+    # 设置交易品种
+    context.symbol = 'SHFE.ag'
+    # 设置止损点数
+    context.stopLossPrice = 50
+    # 获取前一交易日的主力合约
+    startDate = get_previous_trading_date(exchange='SHFE', date=context.now.date())
+    continuous_contract = get_continuous_contracts(context.symbol, startDate, startDate)
+    context.mainContract = continuous_contract[0]['symbol']
+    # 获取当前时间
+    time = context.now.strftime('%H:%M:%S')
+    # 如果当前时间是非交易时间段，则直接执行algo,以防直接进入on_bar()导致context.bBreak等未定义
+    if '09:00:00' < time < '15:00:00' or '21:00:00' < time < '23:00:00':
+        algo(context)
+    # 如果是交易时间段，等到开盘时间确保进入algo()
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '09:00:00')
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '21:00:00')
+    # 订阅行情
+    subscribe(continuous_contract[0]['symbol'], frequency='60s', count=1)
+
+
+def algo(context):
+    # 检查主力和约，发生变化则更换订阅
+    # 由于主力合约在盘后才公布，为了防止未来函数，选择上一交易日的主力合约。
+    startDate = get_previous_trading_date(exchange='SHFE', date=context.now.date())
+    contractInfo = get_continuous_contracts(context.symbol, startDate, startDate)
+    if context.mainContract != contractInfo[0]['symbol']:
+        context.mainContract = contractInfo[0]['symbol']
+        subscribe(context.mainContract, frequency='60s', count=1, unsubscribe_previous=True)
+
+    # 获取历史数据
+    data = history_n(symbol=context.mainContract, frequency='1d',
+                         end_time=context.now, fields='high,low,open,symbol,close', count=2, df=True)
+    high = data['high'].iloc[0]  # 前一日的最高价
+    low = data['low'].iloc[0]  # 前一日的最低价
+    close = data['close'].iloc[0]  # 前一日的收盘价
+    pivot = (high + low + close) / 3  # 枢轴点
+    context.bBreak = high + 2 * (pivot - low)  # 突破买入价
+    context.sSetup = pivot + (high - low)  # 观察卖出价
+    context.sEnter = 2 * pivot - low  # 反转卖出价
+    context.bEnter = 2 * pivot - high  # 反转买入价
+    context.bSetup = pivot - (high - low)  # 观察买入价
+    context.sBreak = low - 2 * (high - pivot)  # 突破卖出价
+    context.data = data
+
+
+def on_bar(context, bars):
+    # 获取止损价
+    STOP_LOSS_PRICE = context.stopLossPrice
+
+    # 设置参数
+    bBreak = context.bBreak
+    sSetup = context.sSetup
+    sEnter = context.sEnter
+    bEnter = context.bEnter
+    bSetup = context.bSetup
+    sBreak = context.sBreak
+    data = context.data
+
+    # 获取现有持仓
+    position_long = context.account().position(symbol=context.mainContract, side=PositionSide_Long)
+    position_short = context.account().position(symbol=context.mainContract, side=PositionSide_Short)
+
+    # 突破策略:
+    if not position_long and not position_short:  # 空仓条件下
+        if bars[0].close > bBreak:
+            # 在空仓的情况下，如果盘中价格超过突破买入价，则采取趋势策略，即在该点位开仓做多
+            order_volume(symbol=context.mainContract, volume=10, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)  # 做多
+            print("空仓,盘中价格超过突破买入价: 开仓做多")
+            context.open_position_price = bars[0].close
+        elif bars[0].close < sBreak:
+            # 在空仓的情况下，如果盘中价格跌破突破卖出价，则采取趋势策略，即在该点位开仓做空
+            order_volume(symbol=context.mainContract, volume=10, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)  # 做空
+            print("空仓,盘中价格跌破突破卖出价: 开仓做空")
+            context.open_position_price = bars[0].close
+
+    # 设置止损条件
+    else:  # 有持仓时
+        # 开仓价与当前行情价之差大于止损点则止损
+        if (position_long and context.open_position_price - bars[0].close >= STOP_LOSS_PRICE) or \
+                (position_short and bars[0].close - context.open_position_price >= STOP_LOSS_PRICE):
+            print('达到止损点，全部平仓')
+            order_close_all()  # 平仓
+
+        # 反转策略:
+        if position_long:  # 多仓条件下
+            if data.high.iloc[1] > sSetup and bars[0].close < sEnter:
+                # 多头持仓,当日内最高价超过观察卖出价后，
+                # 盘中价格出现回落，且进一步跌破反转卖出价构成的支撑线时，
+                # 采取反转策略，即在该点位反手做空
+                order_close_all()  # 平仓
+                order_volume(symbol=context.mainContract, volume=10, side=OrderSide_Sell,
+                             order_type=OrderType_Market, position_effect=PositionEffect_Open)  # 做空
+                print("多头持仓,当日内最高价超过观察卖出价后跌破反转卖出价: 反手做空")
+                context.open_position_price = bars[0].close
+        elif position_short:  # 空头持仓
+            if data.low.iloc[1] < bSetup and bars[0].close > bEnter:
+                # 空头持仓，当日内最低价低于观察买入价后，
+                # 盘中价格出现反弹，且进一步超过反转买入价构成的阻力线时，
+                # 采取反转策略，即在该点位反手做多
+                order_close_all()  # 平仓
+                order_volume(symbol=context.mainContract, volume=10, side=OrderSide_Buy,
+                             order_type=OrderType_Market, position_effect=PositionEffect_Open)  # 做多
+                print("空头持仓,当日最低价低于观察买入价后超过反转买入价: 反手做多")
+                context.open_position_price = bars[0].close
+
+    if context.now.hour == 14 and context.now.minute == 59:
+        order_close_all()
+        print('全部平仓')
+
+
+if __name__ == '__main__':
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2019-10-1 15:00:00',
+        backtest_end_time='2020-04-16 15:00:00',
+        backtest_initial_cash=1000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 100 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示：
+
+![img](https://www.myquant.cn/uploads/202011/attach_164a1477a3d6100e.png)
+
+回测期间累计收益为 17.69%，年化收益率为 32.44%，基准收益率为-0.92%，整体跑赢指数。最大回撤为 6.11%，胜率为 45.00%。
+
+改变回测期间，观察回测结果如下表所示。
+
+|    标的     |        回测期         | 年化收益率 | 最大回撤 |
+| :---------: | :-------------------: | :--------: | :------: |
+| SHFE.ag2010 | 2019.10.01-2020.04.16 |   32.44%   |  6.11%   |
+| SHFE.rb2010 | 2019.10.01-2020.04.16 |   0.08%    |  1.07%   |
+| SHFE.sn2010 | 2019.10.01-2020.04.16 |   19.59%   |  2.39%   |
+| SHFE.cu2010 | 2019.10.01-2020.04.16 |   31.91%   |  4.80%   |
+| SHFE.ni2010 | 2019.10.01-2020.04.16 |   -1.98%   |  6.81%   |
+
+由上表可看出，除了 ni2010 合约以外，其他几个合约均能保持正收益率，尤其是 ag2010 合约和 cu2010 合约，年化收益率达到 30%以上，最大回撤却只有 10%以内，远远跑赢大盘指数。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 4. 菲阿里四价（期货）
+
+##### 菲阿里四价（期货）
+
+**1.策略介绍**
+
+菲阿里四价同 R Breaker 一样，也是一种日内策略交易，适合短线投资者。
+
+菲阿里四价指的是：昨日高点、昨日低点、昨天收盘、今天开盘四个价格。
+
+菲阿里四价上下轨的计算非常简单。昨日高点为上轨，昨日低点为下轨。当价格突破上轨时，买入开仓；当价格突破下轨时，卖出开仓。
+
+**2.策略逻辑**
+
+第一步：获取昨日最高价、最低价、收盘价、开盘价四个数据。
+
+第二步：计算上轨和下轨。当价格上穿上轨时，买入开仓；当价格下穿下轨时，卖出开仓。
+
+第三步：当日平仓。
+
+回测标的：SHFE.rb2010
+
+回测期：2020-02-07 至 2020-04-15
+
+回测初始资金：200 万
+
+###### **注意：若修改回测期，需要修改对应的回测标的。**
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+"""
+上轨=昨日最高点；
+下轨=昨日最低点；
+止损=今日开盘价;
+如果没有持仓，且现价大于了昨天最高价做多，小于昨天最低价做空。
+如果有多头持仓，当价格跌破了开盘价止损。
+如果有空头持仓，当价格上涨超过开盘价止损。
+选取 进行了回测。
+注意：
+1：为回测方便，本策略使用了on_bar的一分钟来计算，实盘中可能需要使用on_tick。
+2：实盘中，如果在收盘的那一根bar或tick触发交易信号，需要自行处理，实盘可能不会成交。
+"""
+
+
+def init(context):
+    # 设置标的
+    context.symbol = 'SHFE.rb2010'
+    # 订阅一分钟线
+    subscribe(symbols = context.symbol,frequency = '60s',count = 1)
+    # 记录开仓次数，保证一天只开仓一次
+    context.count = 0
+    # 记录当前时间
+    time = context.now.strftime('%H:%M:%S')
+    # 如果当前时间点是交易时间段，则直接执行algo获取历史数据，以防直接进入on_bar()导致context.history_data未定义
+    if '09:00:00' < time < '15:00:00' or '21:00:00' < time < '23:00:00':
+        algo(context)
+    # 如果是非交易时间段，等到上午9点或晚上21点再执行algo()
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '09:00:00')
+    schedule(schedule_func = algo, date_rule = '1d', time_rule = '21:00:00')
+
+def algo(context):
+    # 获取历史的n条信息
+    context.history_data = history_n(symbol=context.symbol, frequency = '1d', end_time = context.now,
+                     fields='symbol,open,high,low',count=2, df=True)
+
+def on_bar(context,bars):
+    # 取出订阅的一分钟bar
+    bar = bars[0]
+    # 提取数据
+    data = context.history_data
+    # 现有持仓情况
+    position_long = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+    position_short = context.account().position(symbol=context.symbol, side=PositionSide_Short)
+    # 如果是回测模式
+    if context.mode == 2:
+        # 开盘价直接在data最后一个数据里取到,前一交易日的最高和最低价为history_data里面的倒数第二条中取到
+        open = data.loc[1, 'open']
+        high = data.loc[0, 'high']
+        low = data.loc[0, 'low']
+    # 如果是实时模式
+    else:
+        # 开盘价通过current取到
+        open = current(context.symbol)[0]['open']
+        # 实时模式不会返回当天的数据，所以history_data里面的最后一条数据是前一交易日的数据
+        high = data.loc[-1, 'high']
+        low = data.loc[-1, 'low']
+    # 交易逻辑部分
+    if position_long:  # 多头持仓小于开盘价止损。
+        if bar.close < open:
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            print('以市价单平多仓')
+    elif position_short: # 空头持仓大于开盘价止损。
+        if bar.close > open:
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            print('以市价单平空仓')
+    else:  # 没有持仓。
+        if bar.close > high and not context.count:  # 当前的最新价大于了前一天的最高价
+            # 开多
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('以市价单开多仓')
+            context.count = 1
+        elif bar.close < low and not context.count:  # 当前最新价小于了前一天的最低价
+            # 开空
+            order_volume(symbol=context.symbol, volume=1, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('以市价单开空仓')
+            context.count = 1
+    # 每天收盘前一分钟平仓
+    if context.now.hour == 14 and context.now.minute == 59:
+        order_close_all()
+        print('全部平仓')
+        context.count = 0
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2020-01-01 15:00:00',
+        backtest_end_time='2020-09-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=100000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 10 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如图所示：
+
+![img](https://www.myquant.cn/uploads/202011/attach_164a69606d934224.png)
+
+回测期累计收益率为-4.05%，年化收益率为-6.03%。沪深 300 指数收益率为 16.61%，整体跑输指数。最大回撤为 4.34%，胜率为 25.66%。
+
+为了验证策略的稳健性，更改标的，回测结果如下：
+
+|    标的     |        回测期         | 年化收益率 | 最大回撤 |
+| :---------: | :-------------------: | :--------: | :------: |
+| SHFE.rb2010 | 2020.02.07-2020.04.15 |   -6.03%   |  4.34%   |
+| SHFE.ag2010 | 2020.02.07-2020.04.15 |   38.03%   |  7.97%   |
+| SHFE.ni2010 | 2020.02.07-2020.04.15 |  -22.46%   |  22.85%  |
+| SHFE.zn2010 | 2020.02.07-2020.04.15 |  -15.93%   |  12.01%  |
+| SHFE.rb2010 | 2020.04.07-2020.06.15 |   -3.40%   |  1.37%   |
+| SHFE.rb2010 | 2020.06.07-2020.08.15 |  -13.96%   |  2.32%   |
+| SHFE.rb2010 | 2020.08.07-2020.10.15 |  -11.38%   |  2.18%   |
+
+由上表可以看出，随着品种的变化，策略的收益变化差异较大。ag2010 的收益率能达到 38.03%，但 ni2010 的收益仅为-22.46%。对于 rb2010，随着回测期的变化，年化收益率均为负值，收益较不稳定。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 5. 小市值（股票）
+
+**1.策略介绍**
+
+1981 年，Banz 基于纽交所长达 40 年的数据发现，小市值股票月均收益率比其他股票高 0.4%。其背后的原因可能是投资者普遍不愿意持有小公司股票，使得这些小公司价格普遍偏低，甚至低于成本价，因此会有较高的预期收益率。由此产生了小市值策略，即投资于市值较小的股票。市值因子也被纳入进大名鼎鼎的 Fama 三因子模型和五因子模型之中。
+
+A 股市场上规模因子是否有效？研究发现，2016 年以前，A 股市场上规模因子的显著性甚至超过了欧美等发达国家市场。但到了 2017-2018 年期间，大市值股票的表现明显优于小市值股票，使得规模因子在 A 股市场上的有效性存疑。
+
+**2.策略逻辑**
+
+第一步：确定调仓频率，以每月第一天调仓为例
+
+第二步：确定股票池股票数量，这里假设有 30 支
+
+第三步：调仓日当天获取前一个月的历史数据，并按照市值由小到大排序
+
+第四步：买入前 30 支股票
+
+回测期：2005-01-01 到 2020-10-01
+
+股票池：所有 A 股股票
+
+回测初始资金：100 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+from datetime import timedelta
+
+
+"""
+小市值策略
+本策略每个月触发一次，计算当前沪深市场上市值最小的前30只股票，并且等权重方式进行买入。
+对于不在前30的有持仓的股票直接平仓。
+回测时间为：2005-01-01 08:00:00 到 2020-10-01 16:00:00
+"""
+
+
+def init(context):
+    # 每月第一个交易日的09:40 定时执行algo任务（仿真和实盘时不支持该频率）
+    schedule(schedule_func=algo, date_rule='1m', time_rule='09:40:00')
+    # 使用多少的资金来进行开仓。
+    context.ratio = 0.8
+    # 定义股票池数量
+    context.num = 30
+    # 通过get_instruments获取所有的上市股票代码
+    context.all_stock = get_instruments(exchanges='SHSE, SZSE', sec_types=[1], skip_suspended=False,
+                                skip_st=False, fields='symbol, listed_date, delisted_date',
+                                df=True)
+
+def algo(context):
+    # 获取筛选时间：date1表示当前日期之前的100天，date2表示当前时间
+    date1 = (context.now - timedelta(days=100)).strftime("%Y-%m-%d %H:%M:%S")
+    date2 = context.now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # 上市不足100日的新股和退市股和B股
+    code = context.all_stock[(context.all_stock['listed_date'] < date1) & (context.all_stock['delisted_date'] > date2) &
+                     (context.all_stock['symbol'].str[5] != '9') & (context.all_stock['symbol'].str[5] != '2')]
+
+    # 剔除停牌和st股
+    df_code = get_history_instruments(symbols=code['symbol'].to_list(), start_date=date2, end_date=date2, df=True)
+    df_code = df_code[(df_code['is_suspended'] == 0) & (df_code['sec_level'] == 1)]
+
+    # 获取所有股票市值
+    fundamental = get_fundamentals_n('trading_derivative_indicator', df_code['symbol'].to_list(),
+                                     context.now, fields='TOTMKTCAP', order_by='TOTMKTCAP', count=1, df=True)
+
+    # 对市值进行排序（升序），并且获取前30个。 最后将这个series 转化成为一个list即为标的池
+    trade_symbols = fundamental.reset_index(
+        drop=True).loc[:context.num - 1, 'symbol'].to_list()
+    print('本次股票池有股票数目: ', len(trade_symbols))
+
+    # 计算每个个股应该在持仓中的权重
+    percent = 1.0 / len(trade_symbols) * context.ratio
+
+    # 获取当前所有仓位
+    positions = context.account().positions()
+
+    # 平不在标的池的仓位
+    for position in positions:
+        symbol = position['symbol']
+        if symbol not in trade_symbols:
+            order_target_percent(symbol=symbol, percent=0, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print('市价单平不在标的池的', symbol)
+
+    # 将标中已有持仓的和还没有持仓的都调整到计算出来的比例。
+    for symbol in trade_symbols:
+        order_target_percent(symbol=symbol, percent=percent, order_type=OrderType_Market,
+                             position_side=PositionSide_Long)
+        print(symbol, '以市价单调整至权重', percent)
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='13a64e72-e900-11eb-b05f-309c2322ba62',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='2b62e7651c9897d0cdd4a6cd818a7ba8488af710',
+        backtest_start_time='2005-01-01 08:00:00',
+        backtest_end_time='2020-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=1000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果和稳健性分析**
+
+设定初始资金 100 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如图所示：
+
+![img](https://www.myquant.cn/uploads/202107/attach_169405d47955a675.png)
+
+回测期累计收益率为 447.16%，年化收益率为 28.38%，沪深 300 指数收益率为 366.77%，策略整体跑赢指数。
+为了检验策略的稳健性，改变回测期和标的股票数量，得到结果如下：
+
+|  n  |        回测期         | 回测期长度     | 年化收益率 | 最大回撤 |
+| :-: | :-------------------: | :------------- | ---------: | :------: |
+| 30  | 2005.01.01-2020.10.01 | 15 年零 9 个月 |     28.38% |  59.51%  |
+| 30  | 2005.01.01-2015.01.01 | 10 年零 9 个月 |      0.99% |  0.30%   |
+| 30  | 2015.01.01-2020.10.01 | 5 年零 9 个月  |      0.85% |  0.31%   |
+| 20  | 2005.01.01-2020.10.01 | 15 年零 9 个月 |     20.19% |  60.53%  |
+| 10  | 2005.01.01-2020.10.01 | 15 年零 9 个月 |     23.43% |  60.75%  |
+
+从长期来看，小市值策略能够带来一定的收益，但同时也伴随着较大的回撤水平。
+从短期来看，策略收益跑输大盘。收益率低，回撤小，整体效益较差。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 6. 布林线均线回归（股票）
+
+**1.策略介绍**
+
+提起布林线均值回归策略，就不得不提布林带这个概念。
+
+布林带是利用统计学中的均值和标准差联合计算得出的，分为均线，上轨线和下轨线。
+
+布林线均值回归策略认为，标的价格在上轨线和下轨线围成的范围内浮动，即使短期内突破上下轨，但长期内仍然会回归到布林带之中。因此，一旦突破上下轨，即形成买卖信号。
+
+当股价向上突破上界时，为卖出信号，当股价向下突破下界时，为买入信号。
+
+BOLL 线的计算公式：
+
+中轨线 = N 日移动平均线
+上轨线 = 中轨线 + k _标准差
+下轨线 = 中轨线 - k_ 标准差
+
+**2.策略逻辑**
+
+第一步：根据数据计算 BOLL 线的上下界
+
+第二步：获得持仓信号
+
+第三步：回测分析
+
+回测标的：SHSE.600004
+
+回测期：2009-09-17 13:00:00 到 2020-03-21 15:00:00
+
+回测初始资金：1000 元
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import
+from gm.api import *
+
+
+"""
+本策略采用布林线进行均值回归交易。当价格触及布林线上轨的时候进行卖出，当触及下轨的时候，进行买入。
+使用600004在 2009-09-17 13:00:00 到 2020-03-21 15:00:00 进行了回测。
+注意：
+1：实盘中，如果在收盘的那一根bar或tick触发交易信号，需要自行处理，实盘可能不会成交。
+"""
+
+
+# 策略中必须有init方法
+def init(context):
+    # 设置布林线的三个参数
+    context.maPeriod = 26  # 计算BOLL布林线中轨的参数
+    context.stdPeriod = 26  # 计算BOLL 标准差的参数
+    context.stdRange = 1  # 计算BOLL 上下轨和中轨距离的参数
+
+    # 设置要进行回测的合约
+    context.symbol = 'SHSE.600004'  # 订阅&交易标的, 此处订阅的是600004
+    context.period = max(context.maPeriod, context.stdPeriod, context.stdRange) + 1  # 订阅数据滑窗长度
+
+    # 订阅行情
+    subscribe(symbols= context.symbol, frequency='1d', count=context.period)
+
+
+def on_bar(context, bars):
+
+    # 获取数据滑窗，只要在init里面有订阅，在这里就可以取的到，返回值是pandas.DataFrame
+    data = context.data(symbol=context.symbol, frequency='1d', count=context.period, fields='close')
+
+    # 计算boll的上下界
+    bollUpper = data['close'].rolling(context.maPeriod).mean() \
+                + context.stdRange * data['close'].rolling(context.stdPeriod).std()
+    bollBottom = data['close'].rolling(context.maPeriod).mean() \
+                 - context.stdRange * data['close'].rolling(context.stdPeriod).std()
+
+    # 获取现有持仓
+    pos = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+
+    # 交易逻辑与下单
+    # 当有持仓，且股价穿过BOLL上界的时候卖出股票。
+    if data.close.values[-1] > bollUpper.values[-1] and data.close.values[-2] < bollUpper.values[-2]:
+        if pos:  # 有持仓就市价卖出股票。
+            order_volume(symbol=context.symbol, volume=100, side=OrderSide_Sell,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            print('以市价单卖出一手')
+
+    # 当没有持仓，且股价穿过BOLL下界的时候买出股票。
+    elif data.close.values[-1] < bollBottom.values[-1] and data.close.values[-2] > bollBottom.values[-2]:
+        if not pos:  # 没有持仓就买入一百股。
+            order_volume(symbol=context.symbol, volume=100, side=OrderSide_Buy,
+                         order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('以市价单买入一手')
+
+
+if __name__ == '__main__':
+    '''
+        strategy_id策略ID,由系统生成
+        filename文件名,请与本文件名保持一致
+        mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+        token绑定计算机的ID,可在系统设置-密钥管理中生成
+        backtest_start_time回测开始时间
+        backtest_end_time回测结束时间
+        backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+        backtest_initial_cash回测初始资金
+        backtest_commission_ratio回测佣金比例
+        backtest_slippage_ratio回测滑点比例
+        '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2009-09-17 13:00:00',
+        backtest_end_time='2020-03-21 15:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=1000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 元，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202010/attach_1641d2633363cc3c.png)
+
+回测期累计收益率为 99.77%，年化收益率为 9.49%。沪深 300 收益率为 10.03%，策略整体跑输大盘。最大回撤为 32.04%，胜率为 73.47%。
+
+为了验证策略的稳定性，改变回测周期，观察收益情况。
+
+|    标的     |        回测期         | 年化收益率 | 最大回撤 |
+| :---------: | :-------------------: | :--------: | :------: |
+| SHSE.600004 | 2009.09.17-2020.03.21 |   9.49%    |  32.04%  |
+| SHSE.600004 | 2009.01.01-2014.12.30 |   2.64%    |  17.07%  |
+| SHSE.600004 | 2014.01.01-2020.03.21 |   20.75%   |  17.21%  |
+| SHSE.600004 | 2009.01.01-2019.03.21 |   8.18%    |  31.95%  |
+
+调整不同的回测期后，策略的收益情况发生变化。整体收益均为正，但均跑输大盘。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 7. alpha 对冲（股票+期货）
+
+**1.策略介绍**
+
+提到 Alpha 策略，首先要理解什么是 CAPM 模型。
+
+CAPM 模型于 1964 年被 Willian Sharpe 等人提出。Sharpe 等人认为，假设市场是均衡的，资产的预期超额收益率就由市场收益超额收益和风险暴露决定的。如下式所示。
+![img](https://www.myquant.cn/uploads/202010/attach_1642f606dd5564c6.png)
+
+其中 rm 为市场组合，rf 为无风险收益率。
+
+根据 CAPM 模型可知，投资组合的预期收益由两部分组成，一部分为无风险收益率 rf，另一部分为风险收益率。
+
+CAPM 模型一经推出就受到了市场的追捧。但在应用过程中发现，CAPM 模型表示的是在均衡状态下市场的情况，但市场并不总是处于均衡状态，个股总会获得超出市场基准水平的收益，即在 CAPM 模型的右端总是存在一个 alpha 项。
+
+为了解决这个问题，1968 年，美国经济学家迈克·詹森（Michael Jensen）提出了詹森指数来描述这个 alpha，因此又称 alpha 指数。计算方式如式 2 所示。
+![img](https://www.myquant.cn/uploads/202010/attach_1642f609cc4ce9bf.png)
+
+因此，投资组合的收益可以改写成
+![img](https://www.myquant.cn/uploads/202010/attach_1642f60c9ff81fb5.png)
+
+可将投资组合的收益拆分为 alpha 收益和 beta 收益。其中 beta 的计算公式为
+![img](https://www.myquant.cn/uploads/202010/attach_1642f610efd39a5a.png)
+
+β 是由市场决定的，属于系统性风险，与投资者管理能力无关，只与投资组合与市场的关系有关。当市场整体下跌时，β 对应的收益也会随着下跌（假设 beta 为正)。alpha 收益与市场无关，是投资者自身能力的体现。投资者通过自身的经验进行选股择时，得到超过市场的收益。
+
+**什么是 alpha 对冲策略？**
+
+所谓的 alpha 对冲不是将 alpha 收益对冲掉，恰恰相反，alpha 对冲策略是将 β 收益对冲掉，只获取 alpha 收益，如下图所示。
+
+![img](https://www.myquant.cn/uploads/202010/attach_1642f61acc4df4ad.png)
+
+alpha 对冲策略将市场性风险对冲掉，只剩下 alpha 收益，整体收益完全取决于投资者自身的能力水平，与市场无关。目前，有许多私募基金采用 alpha 对冲策略。
+
+alpha 对冲策略常采用股指期货做对冲。在股票市场上做多头，在期货市场上做股指期货空头。当股票现货市场亏损时，可以通过期货市场弥补亏损；当期货市场亏损时，可以通过股票现货市场弥补亏损。
+
+目前 alpha 对冲策略主要用于各类基金中。国际上比较知名的桥水基金、AQR 基金等都采用过这种策略。国内也有许多利用 alpha 对冲策略的基金，比如海富通阿尔法对冲混合、华宝量化对冲混合等，近一年平均收益率约为 36.70%。
+
+**alpha 策略能否成功，主要包括以下几个要点：**
+
+- 获取到的 alpha 收益是否足够高，能否超过无风险利率以及指数.
+- 期货和现货之间的基差变化.
+- 期货合约的选择.
+
+alpha 对冲只是一种对冲市场风险的方法，在创建策略时需要结合其他理论一起使用，怎样获取到较高的 alpha 收益才是决定策略整体收益的关键。
+
+**2.策略逻辑**
+
+第一步：制定一个选股策略，构建投资组合，使其同时拥有 alpha 和 beta 收益。
+
+> PS：本策略选取过去一天 EV/EBITDA 值并选取 30 只 EV/EBITDA 值最小且大于零的股票
+
+第二步：做空股指期货，将投资组合的 beta 抵消，只剩 alpha 部分。
+
+第三步：进行回测。
+
+股票池：沪深 300 指数
+
+期货标的：CFFEX.IF 对应的真实合约
+
+回测时间：2017-07-01 08:00:00 至 2017-10-01 16:00:00
+
+回测初始资金：1000 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+
+
+'''
+本策略每隔1个月定时触发计算SHSE.000300成份股的过去一天EV/EBITDA值并选取30只EV/EBITDA值最小且大于零的股票
+对不在股票池的股票平仓并等权配置股票池的标的
+并用相应的CFFEX.IF对应的真实合约等额对冲
+回测数据为:SHSE.000300和他们的成份股和CFFEX.IF对应的真实合约
+回测时间为:2017-07-01 08:00:00到2017-10-01 16:00:00
+注意：本策略仅供参考，实际使用中要考虑到期货和股票处于两个不同的账户，需要人为的保证两个账户的资金相同。
+'''
+
+
+def init(context):
+    # 每月第一个交易日09:40:00的定时执行algo任务（仿真和实盘时不支持该频率）
+    schedule(schedule_func=algo, date_rule='1m', time_rule='09:40:00')
+    # 设置开仓在股票和期货的资金百分比(期货在后面自动进行杠杆相关的调整)
+    context.percentage_stock = 0.4
+    context.percentage_futures = 0.4
+
+
+def algo(context):
+    # 获取当前时刻
+    now = context.now
+
+    # 获取上一个交易日
+    last_day = get_previous_trading_date(exchange='SHSE', date=now)
+
+    # 获取沪深300成份股的股票代码
+    stock300 = get_history_constituents(index='SHSE.000300', start_date=last_day,
+                                                end_date=last_day)[0]['constituents'].keys()
+
+    # 获取上一个工作日的CFFEX.IF对应的合约
+    index_futures = get_continuous_contracts(csymbol='CFFEX.IF', start_date=last_day, end_date=last_day)[-1]['symbol']
+
+    # 获取当天有交易的股票
+    not_suspended_info = get_history_instruments(symbols=stock300, start_date=now, end_date=now)
+    not_suspended_symbols = [item['symbol'] for item in not_suspended_info if not item['is_suspended']]
+
+    # 获取成份股EV/EBITDA大于0并为最小的30个
+    fin = get_fundamentals(table='trading_derivative_indicator', symbols=not_suspended_symbols,
+                           start_date=now, end_date=now, fields='EVEBITDA',
+                           filter='EVEBITDA>0', order_by='EVEBITDA', limit=30, df=True)
+    fin.index = fin.symbol
+
+    # 获取当前仓位
+    positions = context.account().positions()
+
+    # 平不在标的池或不为当前股指期货主力合约对应真实合约的标的
+    for position in positions:
+        symbol = position['symbol']
+        sec_type = get_instrumentinfos(symbols=symbol)[0]['sec_type']
+
+        # 若类型为期货且不在标的池则平仓
+        if sec_type == SEC_TYPE_FUTURE and symbol != index_futures:
+            order_target_percent(symbol=symbol, percent=0, order_type=OrderType_Market,
+                                 position_side=PositionSide_Short)
+            print('市价单平不在标的池的', symbol)
+        elif symbol not in fin.index:
+            order_target_percent(symbol=symbol, percent=0, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print('市价单平不在标的池的', symbol)
+
+    # 获取股票的权重
+    percent = context.percentage_stock / len(fin.index)
+
+    # 买在标的池中的股票
+    for symbol in fin.index:
+        order_target_percent(symbol=symbol, percent=percent, order_type=OrderType_Market,
+                             position_side=PositionSide_Long)
+        print(symbol, '以市价单调多仓到仓位', percent)
+
+    # 获取股指期货的保证金比率
+    ratio = get_history_instruments(symbols=index_futures, start_date=last_day, end_date=last_day)[0]['margin_ratio']
+
+    # 更新股指期货的权重
+    percent = context.percentage_futures * ratio
+
+    # 买入股指期货对冲
+    # 注意：股指期货的percent参数是按照期货的保证金来算比例，不是按照合约价值， 比如说0.1就是用0.1的仓位的资金全部买入期货。
+    order_target_percent(symbol=index_futures, percent=percent, order_type=OrderType_Market,
+                         position_side=PositionSide_Short)
+    print(index_futures, '以市价单调空仓到仓位', percent)
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 08:00:00',
+        backtest_end_time='2017-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 万，手续费率为 0.01%，滑点比率为 0.01%。策略回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202010/attach_1642fcb327937d92.png)
+
+回测期累计收益率为 0.32%，年化收益率为 1.32%，沪深 300 指数收益率为 5.09%，策略整体跑输指数。最大回撤为 1.17%，胜率为 74.29%。
+
+以同样的策略进行选股，不对冲 beta 时回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202010/attach_1642fd33ac756a88.png)
+
+对比可以看出，利用 alpha 对冲策略比未对冲策略收益低，但胜率高于普通策略，最大回撤低于未对冲策略。这也说明了 alpha 对冲策略能够规避一部分由市场带来的风险。
+
+改变回测期，观察策略收益情况如下表所示（以 2020 年 10 月 30 日为结束期）。
+
+|    指标    | 近三月 | 近六月 | 今年来 | 近 1 年 | 近 2 年 | 近 3 年 |
+| :--------: | :----: | :----: | :----: | :-----: | :-----: | :-----: |
+| 年化收益率 | -3.72% | 7.11%  | -2.26% | -0.77%  | -0.52%  | -3.05%  |
+|  最大回撤  | 3.14%  | 3.09%  | 7.88%  |  7.86%  | 14.72%  | 16.12%  |
+|    胜率    | 86.96% | 90.00% | 42.96% | 64.36%  | 60.48%  | 50.55%  |
+
+由上表可知，近几年该策略的整体收益为负，只有近六月的收益率为正。策略最大回撤一直维持在相对较低的水平上，随着时间周期拉长，最大回撤不断增加，胜率不断下降。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 8. 多因子选股（股票）
+
+**1.策略介绍**
+
+多因子策略是最广泛应用的策略之一。CAPM 模型的提出为股票的收益提供了解释，但随着各种市场异象的出现，使得人们发现股票存在超额收益，这种收益不能为市场因子所解释，因此，出现了多因子模型。
+
+多因子模型最早是由 Fama-French 提出，包括三因子和五因子模型。Fama 认为，股票的超额收益可以由市场因子、市值因子和账面价值比因子共同解释。随着市场的发展，出现许多三因子模型难以解释的现象。因此，Fama 又提出了五因子模型，加入了盈利水平、投资水平因子。
+
+此后，陆续出现了六因子模型、八因子模型等，目前多少个因子是合适的尚无定论。
+
+市场上常用的多因子模型包括如下几个。
+
+| 模型                          | 出处                     | 所含因子                     |
+| :---------------------------- | :----------------------- | :--------------------------- |
+| Fama-French 三因子            | Fama and Farench(1993)   | 市场、规模、价值             |
+| Carhart 四因子                | Carhart（1997）          | 市场、规模、价值、动量       |
+| Novy-Marx 四因子              | Novy-Marx（2013）        | 市场、规模、价值、盈利       |
+| Fama-French 五因子            | Fama and Farench(2015)   | 市场、规模、价值、盈利、投资 |
+| Hou-Xue-Zhang 四因子          | Hou et al                | 市场、规模、盈利、投资       |
+| Stambaugh-Yuan 四因子         | Stambaugh and Yuan(2017) | 市场、规模、管理、表现       |
+| Daniel-Hirshleifer-Sun 三因子 | Daniel et al（2020）     | 市场、长周期行为、短周期行为 |
+
+本策略以 Fama 提出的三因子模型作为基础。
+
+**Fama-French 三因子模型**
+
+在多因子模型出现以前，CAPM 模型被奉为典型，几乎所有定价均是按照 CAPM 模型计算的。后来学者们发现了各种异象，这些异象无法用 CAPM 模型解释。较为典型的有 Basu 发现的盈利市值比效应和 Banz 发现的小市值效应。遗憾的是，虽然单一异象被发现后都对 CAPM 提出了挑战，但并没有形成合力，直到 Fama 三因子模型出现。
+
+Fama 等人在 CAPM 的基础上，Fama 加入了 HML 和 SMB 两个因子，提出了三因子模型，也是多因子模型的基础。
+
+![img](https://www.myquant.cn/uploads/202011/attach_1646221cab7ec002.png)
+
+其中 E[R_i]代表股票 i 的预期收益率，R_f 代表无风险收益率，E[R_m]为市场组合预期收益率，E[R_SMB]和 E[R_HML]分别为规模因子收益率和价值因子预期收益率。
+
+为构建价值因子和规模因子，Fama 选择 BM 和市值两个指标进行双重排序，将股票分为大市值组 B 和小市值组 S；按照账面市值比将股票分为 BM 高于 70%分位数的 H 组，BM 低于 30%分位数的 L 组，BM 处于二者之间的记为 M 组。如表所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_1646223b74c77c26.png)
+
+得到上述分组以后，就可以构建规模和价值两个因子。
+
+![img](https://www.myquant.cn/uploads/202011/attach_16462244e23ef82a.png)
+
+上述式子解释一下可以发现，规模因子是三个小市值组合的等权平均减去三个大市值组合的等权平均；价值因子是两个高 BM 组合的等权平均减去两个低 BM 组合的等权平均。
+
+策略设计思路（假设三因子模型是完全有效的）
+
+在用三因子模型估算股票预期收益率时，经常会发现并非每只股票都能严格吻合式 1，大部分股票都会存在一个 alpha 截距项。当存在 alpha 截距项时，说明股票当前价格偏离均衡价格。基于此，可以设计套利策略。
+
+alpha < 0 时，说明股票收益率低于均衡水平，股票价格被低估，应该买入。
+alpha > 0 时，说明股票收益率高于均衡水平，股票价格被高估，应该卖出。
+
+因此，可以获取 alpha 最小并且小于 0 的 10 只的股票买入开仓。
+
+**2.策略逻辑**
+
+第一步：获取股票市值以及账面市值比数据。
+
+第二步：将股票按照各个因子进行排序分组，分组方法如上表所示。
+
+第三步：依据式 2 式 3，计算 SMB、HML 因子。
+
+第四步：因子回归，计算 alpha 值。获取 alpha 最小并且小于 0 的 10 只的股票买入开仓。
+
+回测期：2017-07-01 8:00:00 至 2017-10-01 16:00:00
+
+回测初始资金：1000 万
+
+回测标的：沪深 300 成分股
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+from gm.api import *
+from pandas import DataFrame
+
+
+'''
+本策略每隔1个月定时触发,根据Fama-French三因子模型对每只股票进行回归，得到其alpha值。
+假设Fama-French三因子模型可以完全解释市场，则alpha为负表明市场低估该股，因此应该买入。
+策略思路：
+计算市场收益率、个股的账面市值比和市值,并对后两个进行了分类,
+根据分类得到的组合分别计算其市值加权收益率、SMB和HML.
+对各个股票进行回归(假设无风险收益率等于0)得到alpha值.
+选取alpha值小于0并为最小的10只股票进入标的池
+平掉不在标的池的股票并等权买入在标的池的股票
+回测数据:SHSE.000300的成份股
+回测时间:2017-07-01 08:00:00到2017-10-01 16:00:00
+'''
+
+
+def init(context):
+    # 每月第一个交易日的09:40 定时执行algo任务（仿真和实盘时不支持该频率）
+    schedule(schedule_func=algo, date_rule='1m', time_rule='09:40:00')
+    # 数据滑窗
+    context.date = 20
+    # 设置开仓的最大资金量
+    context.ratio = 0.8
+    # 账面市值比的大/中/小分类
+    context.BM_BIG = 3.0
+    context.BM_MID = 2.0
+    context.BM_SMA = 1.0
+    # 市值大/小分类
+    context.MV_BIG = 2.0
+    context.MV_SMA = 1.0
+
+# 计算市值加权的收益率的函数,MV为市值的分类对应的组别,BM为账目市值比的分类对应的组别
+def market_value_weighted(stocks, MV, BM):
+    select = stocks[(stocks['NEGOTIABLEMV'] == MV) & (stocks.['BM'] == BM)] # 选出市值为MV，账目市值比为BM的所有股票数据
+    market_value = select['mv'].values     # 对应组的全部市值数据
+    mv_total = np.sum(market_value)        # 市值求和
+    mv_weighted = [mv / mv_total for mv in market_value]   # 市值加权的权重
+    stock_return = select['return'].values
+
+    # 返回市值加权的收益率的和
+    return_total = []
+    for i in range(len(mv_weighted)):
+        return_total.append(mv_weighted[i] * stock_return[i])
+    return_total = np.sum(return_total)
+    return return_total
+
+def algo(context):
+    # 获取上一个交易日的日期
+    last_day = get_previous_trading_date(exchange='SHSE', date=context.now)
+    # 获取沪深300成份股
+    context.stock300 = get_history_constituents(index='SHSE.000300', start_date=last_day,
+                                                end_date=last_day)[0]['constituents'].keys()
+    # 获取当天有交易的股票
+    not_suspended = get_history_instruments(symbols=context.stock300, start_date=last_day, end_date=last_day)
+    not_suspended = [item['symbol'] for item in not_suspended if not item['is_suspended']]
+    fin = get_fundamentals(table='trading_derivative_indicator', symbols=not_suspended,
+                           start_date=last_day, end_date=last_day,fields='PB,NEGOTIABLEMV', df=True)  # 获取P/B和市值数据
+
+    # 计算账面市值比,为P/B的倒数
+    fin['PB'] = (fin['PB'] ** -1)
+    # 计算市值的50%的分位点,用于后面的分类
+    size_gate = fin['NEGOTIABLEMV'].quantile(0.50)
+    # 计算账面市值比的30%和70%分位点,用于后面的分类
+    bm_gate = [fin['PB'].quantile(0.30), fin['PB'].quantile(0.70)]
+    fin.index = fin.symbol
+    # 设置存放股票收益率的list
+    x_return = []
+
+    # 对未停牌的股票进行处理
+    for symbol in not_suspended:
+        # 计算收益率，存放到x_return里面
+        close = history_n(symbol=symbol, frequency='1d', count=context.date + 1, end_time=last_day, fields='close',
+                          skip_suspended=True, fill_missing='Last', adjust=ADJUST_PREV, df=True)['close'].values
+        stock_return = close[-1] / close[0] - 1
+        pb = fin['PB'][symbol]
+        market_value = fin['NEGOTIABLEMV'][symbol]
+        # 获取[股票代码， 股票收益率, 账面市值比的分类, 市值的分类, 流通市值]
+        # 其中账面市值比的分类为：大（3）、中（2）、小（1）
+        # 流通市值的分类：大（2）、小（1）
+        if pb < bm_gate[0]:
+            if market_value < size_gate:
+                label = [symbol, stock_return, context.BM_SMA, context.MV_SMA, market_value]
+            else:
+                label = [symbol, stock_return, context.BM_SMA, context.MV_BIG, market_value]
+        elif pb < bm_gate[1]:
+            if market_value < size_gate:
+                label = [symbol, stock_return, context.BM_MID, context.MV_SMA, market_value]
+            else:
+                label = [symbol, stock_return, context.BM_MID, context.MV_BIG, market_value]
+        elif market_value < size_gate:
+            label = [symbol, stock_return, context.BM_BIG, context.MV_SMA, market_value]
+        else:
+            label = [symbol, stock_return, context.BM_BIG, context.MV_BIG, market_value]
+        if len(x_return) == 0:
+            x_return = label
+        else:
+            x_return = np.vstack([x_return, label])
+
+    # 将股票代码、 股票收益率、 账面市值比的分类、 市值的分类、 流通市值存为数据表
+    stocks = DataFrame(data=x_return, columns=['symbol', 'return', 'BM', 'NEGOTIABLEMV', 'mv'])
+    stocks.index = stocks.symbol
+    columns = ['return', 'BM', 'NEGOTIABLEMV', 'mv']
+    for column in columns:
+        stocks[column] = stocks[column].astype(np.float64)
+
+    # 计算SMB.HML和市场收益率（市值加权法）
+    smb_s = (market_value_weighted(stocks, context.MV_SMA, context.BM_SMA) +
+             market_value_weighted(stocks, context.MV_SMA, context.BM_MID) +
+             market_value_weighted(stocks, context.MV_SMA, context.BM_BIG)) / 3
+
+    # 获取大市值组合的市值加权组合收益率
+    smb_b = (market_value_weighted(stocks, context.MV_BIG, context.BM_SMA) +
+             market_value_weighted(stocks, context.MV_BIG, context.BM_MID) +
+             market_value_weighted(stocks, context.MV_BIG, context.BM_BIG)) / 3
+    smb = smb_s - smb_b
+
+    # 获取大账面市值比组合的市值加权组合收益率
+    hml_b = (market_value_weighted(stocks, context.MV_SMA, 3) +
+             market_value_weighted(stocks, context.MV_BIG, context.BM_BIG)) / 2
+
+    # 获取小账面市值比组合的市值加权组合收益率
+    hml_s = (market_value_weighted(stocks, context.MV_SMA, context.BM_SMA) +
+             market_value_weighted(stocks, context.MV_BIG, context.BM_SMA)) / 2
+    hml = hml_b - hml_s
+
+    # 获取市场收益率
+    close = history_n(symbol='SHSE.000300', frequency='1d', count=context.date + 1,
+                      end_time=last_day, fields='close', skip_suspended=True,
+                      fill_missing='Last', adjust=ADJUST_PREV, df=True)['close'].values
+    market_return = close[-1] / close[0] - 1
+    coff_pool = []
+
+    # 对每只股票进行回归获取其alpha值
+    for stock in stocks.index:
+        x_value = np.array([[market_return], [smb], [hml], [1.0]])
+        y_value = np.array([stocks['return'][stock]])
+        # OLS估计系数
+        coff = np.linalg.lstsq(x_value.T, y_value)[0][3]
+        coff_pool.append(coff)
+
+    # 获取alpha最小并且小于0的10只的股票进行操作(若少于10只则全部买入)
+    stocks['alpha'] = coff_pool
+    stocks = stocks[stocks.alpha < 0].sort_values(by='alpha').head(10)
+    symbols_pool = stocks.index.tolist()
+    positions = context.account().positions()
+
+    # 平不在标的池的股票
+    for position in positions:
+        symbol = position['symbol']
+        if symbol not in symbols_pool:
+            order_target_percent(symbol=symbol, percent=0, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print('市价单平不在标的池的', symbol)
+
+    # 获取股票的权重
+    percent = context.ratio / len(symbols_pool)
+
+    # 买在标的池中的股票
+    for symbol in symbols_pool:
+        order_target_percent(symbol=symbol, percent=percent, order_type=OrderType_Market,
+                             position_side=PositionSide_Long)
+        print(symbol, '以市价单调多仓到仓位', percent)
+
+
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 08:00:00',
+        backtest_end_time='2017-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_1646226a05f71614.png)
+
+回测期累计收益为 4.71%，年化收益率为 19.33%，沪深 300 指数收益率为 5.09%，策略整体跑输沪深 300 指数。最大回撤为 4.18%，胜率为 65%。
+
+为了检验策略的稳健性，改变回测时间，得到回测结果如下。
+
+|       回测时间        | 时间长度 | 年化收益率 | 最大回撤 |
+| :-------------------: | :------: | :--------: | :------: |
+| 2017.07.01-2017.10.01 |  3 个月  |   19.33%   |  4.18%   |
+| 2017.07.01-2017.12.31 |  5 个月  |   12.54%   |  7.53%   |
+| 2017.07.01-2018.07.01 | 12 个月  |   -8.09%   |  23.17%  |
+| 2017.07.01-2019.07.01 | 24 个月  |   3.27%    |  35.38%  |
+| 2017.07.01-2020.07.01 | 36 个月  |   6.19%    |  35.37%  |
+
+由上表可以看出，策略收益除了在 2017 年 7 月 1 日至 2018 年 7 月 1 日以外其他时间段收益均为正。在 2017 年 7 月 1 日至 2017 年 10 月 1 日期间收益率最高，年化收益率为 19.33%。回测期最大回撤随着时间长度的增加而增加，最高达到 35.38%，与获得的收益相比，承受风险过大。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 9. 网格交易（期货）
+
+**1.策略介绍**
+
+网格交易法是一种利用行情震荡进行获利的策略。在标的价格不断震荡的过程中，对标的价格绘制网格，在市场价格触碰到某个网格线时进行加减仓操作尽可能获利。
+
+网格交易法属于左侧交易的一种。与右侧交易不同，网格交易法并非跟随行情，追涨杀跌，而是逆势而为，在价格下跌时买入，价格上涨时卖出。
+
+投资者可以随意设置网格的宽度和数量。既可以设置为等宽度，也可以设置为不等宽度的。设置等宽度网格可能会导致买点卖点过早，收益率较低。设置不等宽度网格能够避免这个问题，但如果行情出现不利变动，可能会错失买卖机会。
+
+在行情震荡上涨时：
+
+![img](https://www.myquant.cn/uploads/202010/attach_1642640f8e2ec613.png)
+
+假设格子之间的差为 1 元钱，每变化一个格子相应的买入或卖出 1 手，则通过网格交易当前账户的净收益为 5 元，持空仓 3 手，持仓均价为 13 元。
+
+行情震荡下跌时：
+
+![img](https://www.myquant.cn/uploads/202010/attach_164264143d608515.png)
+
+同理可知，净收益为 10 元，持 5 手多仓，平均成本为 8 元。
+
+可以看到，无论行情上涨还是下跌，已平仓的部分均为正收益，未平仓的部分需要等下一个信号出现再触发交易。
+
+即使网格交易能够获得较为稳定的收益，但也存在一定的风险。如果行情呈现大涨或大跌趋势，会导致不断开仓，增加风险敞口。这也是为什么网格交易更适用震荡行情，不合适趋势性行情。
+
+网格交易主要包括以下几个核心要点：
+
+- **挑选的标的最好是价格变化较大，交易较为活跃**
+  网格交易是基于行情震荡进行获利的策略，如果标的不活跃，价格波动不大，很难触发交易。
+
+- **选出网格的压力位和阻力位**
+  确定适当的压力位和阻力位，使价格大部分时间能够在压力位和阻力位之间波动。如果压力位和阻力位设置范围过大，会导致难以触发交易；如果压力位和阻力位设置范围过小，则会频繁触发交易。
+- **设置网格的宽度和数量**
+  设定多少个网格以及网格的宽度可根据投资者自身喜好自行确定。
+
+**2.策略逻辑**
+
+第一步：确定价格中枢、压力位和阻力位
+
+第二步：确定网格的数量和间隔
+
+第三步：当价格触碰到网格线时，若高于买入价，则每上升一格卖出 m 手；若低于买入价，则每下跌一格买入 m 手。
+
+回测标的：SHFE.rb1901
+
+回测时间：2018-07-01 到 2018-10-01
+
+回测初始资金：10 万
+
+###### 注意：若修改回测期，需要修改对应的回测标的。
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+import pandas as pd
+from gm.api import *
+'''
+本策略标的为：SHFE.rb1901
+价格中枢设定为：前一交易日的收盘价
+从阻力位到压力位分别为：1.03 * open、1.02 * open、1.01 * open、open、0.99 * open、0.98 * open、0.97 * open
+每变动一个网格，交易量变化100个单位
+回测数据为:SHFE.rb1901的1min数据
+回测时间为:2017-07-01 08:00:00到2017-10-01 16:00:00
+'''
+def init(context):
+    # 策略标的为SHFE.rb1901
+    context.symbol = 'SHFE.rb1901'
+    # 订阅SHFE.rb1901, bar频率为1min
+    subscribe(symbols = context.symbol, frequency='60s')
+    # 设置每变动一格，增减的数量
+    context.volume = 1
+    # 储存前一个网格所处区间，用来和最新网格所处区间作比较
+    context.last_grid = 0
+    # 以前一日的收盘价为中枢价格
+    context.center = history_n(symbol= context.symbol,frequency='1d',end_time=context.now,count = 1,fields = 'close')[0]['close']
+    # 记录上一次交易时网格范围的变化情况（例如从4区到5区，记为4,5）
+    context.grid_change_last = [0,0]
+def on_bar(context, bars):
+    bar = bars[0]
+    # 获取多仓仓位
+    position_long = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+    # 获取空仓仓位
+    position_short = context.account().position(symbol=context.symbol, side=PositionSide_Short)
+    # 设置网格和当前价格所处的网格区域
+    context.band = np.array([0.97, 0.98, 0.99, 1, 1.01, 1.02, 1.03]) * context.center
+    grid = pd.cut([bar.close], context.band, labels=[1, 2, 3, 4, 5, 6])[0]
+    # 如果价格超出网格设置范围，则提示调节网格宽度和数量
+    if np.isnan(grid):
+        print('价格波动超过网格范围，可适当调节网格宽度和数量')
+    # 如果新的价格所处网格区间和前一个价格所处的网格区间不同，说明触碰到了网格线，需要进行交易
+    # 如果新网格大于前一天的网格，做空或平多
+    if context.last_grid < grid:
+        # 记录新旧格子范围（按照大小排序）
+        grid_change_new = [context.last_grid,grid]
+        # 几种例外：
+        # 当last_grid = 0 时是初始阶段，不构成信号
+        # 如果此时grid = 3，说明当前价格仅在开盘价之下的3区域中，没有突破网格线
+        # 如果此时grid = 4，说明当前价格仅在开盘价之上的4区域中，没有突破网格线
+        if context.last_grid == 0:
+            context.last_grid = grid
+            return
+        if context.last_grid != 0:
+            # 如果前一次开仓是4-5，这一次是5-4，算是没有突破，不成交
+            if grid_change_new != context.grid_change_last:
+                # 更新前一次的数据
+                context.last_grid = grid
+                context.grid_change_last = grid_change_new
+                # 如果有多仓，平多
+                if position_long:
+                    order_volume(symbol=context.symbol, volume=context.volume, side=OrderSide_Sell, order_type=OrderType_Market,
+                                 position_effect=PositionEffect_Close)
+                    print('以市价单平多仓{}手'.format(context.volume))
+                # 否则，做空
+                if not position_long:
+                    order_volume(symbol=context.symbol, volume=context.volume, side=OrderSide_Sell, order_type=OrderType_Market,
+                                 position_effect=PositionEffect_Open)
+                    print('以市价单开空{}手'.format(context.volume))
+    # 如果新网格小于前一天的网格，做多或平空
+    if context.last_grid > grid:
+        # 记录新旧格子范围（按照大小排序）
+        grid_change_new = [grid,context.last_grid]
+        # 几种例外：
+        # 当last_grid = 0 时是初始阶段，不构成信号
+        # 如果此时grid = 3，说明当前价格仅在开盘价之下的3区域中，没有突破网格线
+        # 如果此时grid = 4，说明当前价格仅在开盘价之上的4区域中，没有突破网格线
+        if context.last_grid == 0:
+            context.last_grid = grid
+            return
+        if context.last_grid != 0:
+            # 如果前一次开仓是4-5，这一次是5-4，算是没有突破，不成交
+            if grid_change_new != context.grid_change_last:
+                # 更新前一次的数据
+                context.last_grid = grid
+                context.grid_change_last = grid_change_new
+                # 如果有空仓，平空
+                if position_short:
+                    order_volume(symbol=context.symbol, volume=context.volume, side=OrderSide_Buy,
+                                 order_type=OrderType_Market,
+                                 position_effect=PositionEffect_Close)
+                    print('以市价单平空仓{}手'.format(context.volume))
+                # 否则，做多
+                if not position_short:
+                    order_volume(symbol=context.symbol, volume=context.volume, side=OrderSide_Buy,
+                                 order_type=OrderType_Market,
+                                 position_effect=PositionEffect_Open)
+                    print('以市价单开多{}手'.format(context.volume))
+    # 设计一个止损条件：当持仓量达到10手，全部平仓
+    if position_short == 10 or position_long == 10:
+        order_close_all()
+        print('触发止损，全部平仓')
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2018-07-01 08:00:00',
+        backtest_end_time='2018-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=100000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 10 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_164662eca2da98df.png)
+
+回测期间策略累计收益率为 4.16%，年化收益率为 16.50%，基准收益率为 0.91%，整体跑赢指数。最大回撤为 0.72%，胜率为 100%。在 2018 年 7 月 12 日以后，标的没有交易，说明此时标的价格已经超过设置的网格范围，可以适当加宽或增加网格数量。
+
+为了检验策略的稳健性，保持标的和回测期不变，改变网格间隔和网格数量，得到回测结果如下表所示。
+
+|    网格间隔     | 网格数量 | 手续费 | 年化收益率 | 最大回撤 |  胜率  | 未平头寸 |
+| :-------------: | :------: | :----: | :--------: | :------: | :----: | :------: |
+| 0.01\*价格中枢  |    6     | 50.55  |   16.50%   |  0.72%   |  100%  | 0 手多单 |
+| 0.02\*价格中枢  |    6     | 36.89  |   26.21%   |  7.82%   |  100%  | 2 手空单 |
+| 0.005\*价格中枢 |    6     | 61.42  |  -30.24%   |  22.04%  | 85.71% | 3 手空单 |
+| 0.01\*价格中枢  |    4     | 18.11  |   15.49%   |  4.17%   |  100%  | 1 手多单 |
+| 0.02\*价格中枢  |    4     | 18.16  |   16.08%   |  4.16%   |  100%  | 1 手空单 |
+| 0.005\*价格中枢 |    4     | 21.72  |  -51.27%   |  31.39%  |  100%  | 4 手空单 |
+
+可以看到，改变网格间隔和网格数量对回测结果的影响较大。整体胜率较高，但存在部分未平头寸。在网格间隔设置为 0.01 倍价格中枢时，整体收益率最高，最大回撤也处于较低水平；在网格间隔为 0.02 倍中枢价格时，整体收益率最差。由此可以看出，网格间隔对收益率的影响要高于网格数量。因此，在利用网格交易法时，需要设置合理的网格间隔。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 10. 指数增强（股票）
+
+**1.策略介绍**
+
+说到指数增强，就不得不说指数。
+
+在进行股票投资时，有一种分类方式是将投资分为**主动型投资**和**被动型投资**。被动型投资是指完全复制指数，跟随指数的投资方式。与被动型投资相反，主动型投资是根据投资者的知识结合经验进行主动选股，不是被动跟随指数。主动型投资者期望获得超越市场的收益，被动型投资者满足于市场平均收益率水平。
+
+指数增强是指在跟踪指数的基础上，采用一些判断基准，将不看好的股票权重调低或平仓，将看好的股票加大仓位，以提高收益率的方法。
+
+**既然如此，我已经判断出来哪只是“好股票”，哪只是“一般”的股票，为什么不直接买入？而是要买入指数呢？**
+
+指数增强不同于其他主动投资方式，除了注重获取超越市场的收益，还要兼顾降低组合风险，注重收益的稳定性。如果判断失误，只买入选中股票而非指数会导致投资者承受巨大亏损。
+
+**怎样选择股票？**
+
+和 alpha 对冲策略类似，指数增强仅仅是一个思路，怎样选择“好股”还需投资者结合自身经验判断。
+
+本策略利用“动量”这一概念，认为过去 5 天连续上涨的股票具备继续上涨的潜力，属于强势股；过去 5 天连续下跌的股票未来会继续下跌，属于弱势股。
+
+**2.策略逻辑**
+
+第一步：选择跟踪指数，以权重大于 0.35%的成分股为股票池。
+
+第二步：根据个股价格动量来判断是否属于优质股，即连续上涨 5 天则为优势股；间隔连续下跌 5 天则为劣质股。
+
+第三步：将优质股权重调高 0.2，劣质股权重调低 0.2。
+
+回测时间:2017-07-01 08:00:00 到 2017-10-01 16:00:00
+
+回测选股股票池：沪深 300 成分股
+
+回测初始资金：1000 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+from gm.api import *
+from pandas import DataFrame
+'''
+本策略以0.8为初始权重跟踪指数标的沪深300中权重大于0.35%的成份股.
+个股所占的百分比为(0.8*成份股权重)*100%.然后根据个股是否:
+1.连续上涨5天 2.连续下跌5天
+来判定个股是否为强势股/弱势股,并对其把权重由0.8调至1.0或0.6
+回测时间为:2017-07-01 08:50:00到2017-10-01 17:00:00
+'''
+def init(context):
+    # 资产配置的初始权重,配比为0.6-0.8-1.0
+    context.ratio = 0.8
+    # 获取沪深300当时的成份股和相关数据
+    stock300 = get_history_constituents(index='SHSE.000300', start_date='2017-06-30', end_date='2017-06-30')[0][
+        'constituents']
+    stock300_symbol = []
+    stock300_weight = []
+    for key in stock300:
+        # 保留权重大于0.35%的成份股
+        if (stock300[key] / 100) > 0.0035:
+            stock300_symbol.append(key)
+            stock300_weight.append(stock300[key] / 100)
+    context.stock300 = DataFrame([stock300_weight], columns=stock300_symbol, index=['weight']).T
+    print('选择的成分股权重总和为: ', np.sum(stock300_weight))
+    subscribe(symbols=stock300_symbol, frequency='1d', count=5, wait_group=True)
+def on_bar(context, bars):
+    # 若没有仓位则按照初始权重开仓
+    for bar in bars:
+        symbol = bar['symbol']
+        position = context.account().position(symbol=symbol, side=PositionSide_Long)
+        if not position:
+            buy_percent = context.stock300['weight'][symbol] * context.ratio
+            order_target_percent(symbol=symbol, percent=buy_percent, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print(symbol, '以市价单开多仓至仓位:', buy_percent)
+        else:
+            # 获取过去5天的价格数据,若连续上涨则为强势股,权重+0.2;若连续下跌则为弱势股,权重-0.2
+            recent_data = context.data(symbol=symbol, frequency='1d', count=5, fields='close')['close'].tolist()
+            if all(np.diff(recent_data) > 0):
+                buy_percent = context.stock300['weight'][symbol] * (context.ratio + 0.2)
+                order_target_percent(symbol=symbol, percent=buy_percent, order_type=OrderType_Market,
+                                     position_side=PositionSide_Long)
+                print('强势股', symbol, '以市价单调多仓至仓位:', buy_percent)
+            elif all(np.diff(recent_data) < 0):
+                buy_percent = context.stock300['weight'][symbol] * (context.ratio - 0.2)
+                order_target_percent(symbol=symbol, percent=buy_percent, order_type=OrderType_Market,
+                                     position_side=PositionSide_Long)
+                print('弱势股', symbol, '以市价单调多仓至仓位:', buy_percent)
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 08:00:00',
+        backtest_end_time='2017-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。回测期结果如下图所示：
+
+![img](https://www.myquant.cn/uploads/202010/attach_1642b8cc275b77ae.png)
+
+回测期累计收益率为 2.76%，年化收益率为 11.34%，沪深 300 指数收益率为 5.09%，整体跑输指数。最大回撤为 1.88%，胜率为 74.62%。
+
+为了探究策略的稳健性，改变回测期，策略表现如下表所示。
+
+| 回测期                   | 回测期长度 | 年化收益率 | 最大回撤 |
+| :----------------------- | :--------- | :--------- | :------- |
+| 2017-07-01 至 2017-10-01 | 3 个月     | 11.34%     | 1.88%    |
+| 2017-07-01 至 2017-12-31 | 6 个月     | 29.06%     | 5.90%    |
+| 2017-07-01 至 2018-07-01 | 12 个月    | 4.71%      | 18.73%   |
+| 2017-07-01 至 2019-07-01 | 24 个月    | 11.11%     | 24.33%   |
+| 2017-07-01 至 2020-07-01 | 36 个月    | 5.48%      | 24.30%   |
+
+由上表可知，改变策略回测周期长度，策略收益率均为正，但都处于较低水平（除了 2017 年 7 月 1 日至 2018 年 7 月 1 日收益率达到 29.06%）。随着策略回测期拉长，最大回撤不断增大。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 11. 跨品种套利（期货）
+
+**1.策略介绍**
+
+**什么是套利？**
+
+套利是指在买入或卖出一种金融资产的同时卖出或买入另一种相关的金融资产从中利用价差获得套利的过程。
+
+**什么是跨品种套利？**
+
+当两个合约有很强的相关性时，可能存在相似的变动关系，两种合约之间的价差会维持在一定的水平上。当市场出现变化时，两种合约之间的价差会偏离均衡水平。此时，可以买入其中一份合约同时卖出其中一份合约，当价差恢复到正常水平时平仓，获取收益。
+
+以大商所玉米和淀粉为例，合约分别为 DCE.c1801 和 DCE.cs1801。二者之间相关性为 0.7333，价差处于相对稳定合理区间。如图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_16447dccc6e340a8.png)
+
+二者价差整体处于 250-350 之间。当价差偏离此区间时，可以进行跨品种套利。
+
+**跨品种套利有以下几个特点：**
+
+1.套利的两种资产必须有一定的相关性。 2.两种合约标的不同，到期时间相同。 3.两种资产之间的价差呈现一定规律。
+
+**怎样确定合约之间有相关性？**
+
+最常用的方法是利用 EG 两步法对两个序列做协整检验，判断两个序列是否平稳。只有单整阶数相同，二者才有可能存在一定的关系。
+
+以大豆和豆粕为例，选取其在 2017 年 1 月 1 日至 2018 年 1 月 1 日的主力合约价格时间序列，利用 statsmodels 包进行协整检验。
+
+检验结果为：
+焦炭的 t = -1.7886，1%置信区间的临界值为-3.4576,说明该序列在 99%的置信水平下平稳。
+焦煤的 t = -2.0500，1%置信区间的临界值为-3.4576,说明该序列在 99%的置信水平下平稳。
+
+因此，二者都为**平稳序列**。
+
+利用 OLS 回归检残差序列是否平稳，残差的 t=-2.3214，临界值为-3.4577，说明残差平稳。因此，可以认为二者之间存在一定关系。
+
+回归后的残差图如下：
+![img](https://www.myquant.cn/uploads/202011/attach_16447dd8a2012b87.png)
+
+对残差进行 ks 检验，检验结果 p=0,说明残差分布为正态分布。
+
+**策略设计**
+
+传统利用价差进行跨品种套利的方法是计算出均值和方差，设定开仓、平仓和止损阈值。当新的价格达到阈值时，进行相应的开仓和平仓操作。
+
+**应该怎样确定均值？**
+
+均值的选取主要有两种方法，第一种方法是固定均值。先历史价格计算相应的阈值（比如利用 2017 年 2 月-2017 年 6 月的数据计算阈值，在 2019 年 7 月进行套利），再用最新价差进行比较，会发现前后均值差异很大。如图所示。
+![img](https://www.myquant.cn/uploads/202011/attach_16447de3754242dd.png)
+因此，常用变动的均值设定阈值。即用过去 N 天两个标的之间差值的均值和方差。
+
+**2.策略逻辑**
+
+第一步：选择相关性较高的两个合约，本例选择大商所的焦炭和焦煤。
+
+第二步：以过去 30 个的 1d 频率 bar 的均值正负 0.75 个标准差作为开仓阈值，以正负 2 个标准差作为止损阈值。
+
+第三步：最新价差上穿上界时做空价差，回归到均值附近平仓；下穿下界时做多价差，回归到均值附近平仓。设定止损点，触发止损点则全部平仓。
+
+回测期：2018-02-01 8:00:00 至 2018-12-31 16:00:00
+
+回测标的：DCE.j1901, DCE.jm1901
+
+回测初始资金：200 万
+
+###### **注意：若修改回测期，需要修改对应的回测标的。**
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+import numpy as np
+def init(context):
+    # 选择的两个合约
+    context.symbol = ['DCE.j1901', 'DCE.jm1901']
+    # 订阅历史数据
+    subscribe(symbols=context.symbol,frequency='1d',count=11,wait_group=True)
+def on_bar(context, bars):
+    # 数据提取
+    j_close = context.data(symbol=context.symbol[0],frequency='1d',fields='close',count=31).values
+    jm_close = context.data(symbol=context.symbol[1],frequency='1d',fields='close',count=31).values
+    # 提取最新价差
+    new_price = j_close[-1] - jm_close[-1]
+    # 计算历史价差,上下限，止损点
+    spread_history = j_close[:-2] -  jm_close[:-2]
+    context.spread_history_mean = np.mean(spread_history)
+    context.spread_history_std = np.std(spread_history)
+    context.up = context.spread_history_mean + 0.75 * context.spread_history_std
+    context.down = context.spread_history_mean - 0.75 * context.spread_history_std
+    context.up_stoppoint = context.spread_history_mean + 2 * context.spread_history_std
+    context.down_stoppoint = context.spread_history_mean - 2 * context.spread_history_std
+    # 查持仓
+    position_jm_long = context.account().position(symbol=context.symbol[0],side=1)
+    position_jm_short = context.account().position(symbol=context.symbol[0],side=2)
+    # 设计买卖信号
+    # 设计开仓信号
+    if not position_jm_short and not position_jm_long:
+        if new_price > context.up:
+            print('做空价差组合')
+            order_volume(symbol=context.symbol[0],side=OrderSide_Sell,volume=1,order_type=OrderType_Market,position_effect=1)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+        if new_price < context.down:
+            print('做多价差组合')
+            order_volume(symbol=context.symbol[0], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Sell, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+    # 设计平仓信号
+    # 持jm多仓时
+    if position_jm_long:
+        if new_price >= context.spread_history_mean:
+            # 价差回归到均值水平时，平仓
+            print('价差回归到均衡水平，平仓')
+            order_volume(symbol=context.symbol[0], side=OrderSide_Sell, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+        if new_price < context.down_stoppoint:
+            # 价差达到止损位，平仓止损
+            print('价差超过止损点，平仓止损')
+            order_volume(symbol=context.symbol[0], side=OrderSide_Sell, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+    # 持jm空仓时
+    if position_jm_short:
+        if new_price <= context.spread_history_mean:
+            # 价差回归到均值水平时，平仓
+            print('价差回归到均衡水平，平仓')
+            order_volume(symbol=context.symbol[0], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Sell, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+        if new_price > context.up_stoppoint:
+            # 价差达到止损位，平仓止损
+            print('价差超过止损点，平仓止损')
+            order_volume(symbol=context.symbol[0], side=OrderSide_Buy, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            order_volume(symbol=context.symbol[1], side=OrderSide_Sell, volume=1, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token',
+        backtest_start_time='2018-02-01 08:00:00',
+        backtest_end_time='2018-12-31 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=2000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 200 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_164c3d52099fe40d.png)
+
+回测期累计收益率 2.80%，年化收益率为 3.06%，沪深 300 收益率为-29.09%，策略收益跑赢基准收益。最大回撤率为 2.03%，胜率为 48.25%。
+
+为了检验策略的稳健性，改变数据的频率和均线的计算周期，结果如下。
+
+| 数据频率 | 均线周期 | 年化收益率 | 最大回撤 |
+| :------: | :------: | :--------: | :------: |
+|    1d    |    10    |   3.06%    |  2.30%   |
+|    1d    |    20    |   3.51%    |  2.53%   |
+|    1d    |    30    |   0.55%    |  2.45%   |
+|  3600s   |    10    |   -7.84%   |  7.40%   |
+|  3600s   |    20    |   -4.11%   |  5.28%   |
+|  3600s   |    30    |   -2.89%   |  3.91%   |
+|   900s   |    10    |  -10.07%   |  9.38%   |
+|   900s   |    20    |   -9.39%   |  8.82%   |
+|   900s   |    30    |   -7.65%   |  7.32%   |
+
+可以看出，该策略只在 1d 的频率下实现了盈利，在其他频率下，收益均为负，说明该策略对于高频场景的适用有一定限制。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 12. 跨期套利（期货）
+
+**1.策略介绍**
+
+跨期套利是指在同益市场利用标的相同、交割月份不同的商品期货合约进行长短期套利的策略。跨期套利本质上是一种风险对冲，当价格出现单方向变动时，单边投机者要承担价格反向变动的风险，而跨期套利过滤了大部分的价格波动风险，只承担价差反向变动的风险。
+
+跨期套利相较于跨品种套利而言更复杂一些。跨期套利分为牛市套利、熊市套利、牛熊交换套利。每种套利方式下还有正向套利和反向套利。不管是哪种套利方式，其核心都是认为“价差会向均值回归”。因此，在价差偏离均值水平时，按照判断买入被低估的合约，卖出被高估的合约。
+
+**套利方法可归结为以下几类：**
+
+| 价差（近-远）       | 未来价    | 原理                | 操作     |
+| :------------------ | :-------- | :------------------ | :------- |
+| 偏大                | 上涨/下跌 | 近月增长 >远月增长  | 买近卖远 |
+| 近月下跌 < 远月下跌 |           |                     |          |
+| 偏小                | 上涨/下跌 | 近月增长 < 远月增长 | 卖近买远 |
+| 近月下跌 > 远月下跌 |           |                     |          |
+|                     |           |                     |          |
+
+**协整检验**
+
+要想判断两个序列之间是否存在关系，需要对序列进行协整检验。以大商所豆粕为例，对 DCE.m1701 和 DCE.m1705 进行检验。
+
+1701 合约的 t 值 = -2.1176，临界值为-3.4769，t > 临界值说明序列平稳。
+1705 合约的 t 值 = -2.5194，临界值为-3.4769，t > 临界值说明序列平稳。
+
+两个序列都为单整序列，残差序列也平稳，说明二者之间存在长期稳定的均衡关系。
+
+**2.策略逻辑**
+
+第一步：选择同一标的不同月份的合约，本策略以豆粕为例。
+
+第二步：计算价差的上下轨。
+
+第三步：设计信号。价差上穿上轨，买近卖远；价差下穿下轨，卖近买远。价差达到止损点时平仓，价差回归到均值附近时平仓。
+
+回测标的：DCE.m1801、DCE.m1805
+
+回测时间:2017-09-25 到 2017-10-01
+
+回测初始资金：200 万
+
+###### 注意：若修改回测期，需要修改对应的回测标的。
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+from gm.api import *
+'''
+通过计算两个真实价格序列回归残差的0.9个标准差上下轨,并在价差突破上轨的时候做空价差,价差突破下轨的时候做多价差
+并在回归至标准差水平内的时候平仓
+回测数据为:DCE.m1801和DCE.m1805的1min数据
+回测时间为:2017-09-25 08:00:00到2017-10-01 15:00:00
+'''
+def init(context):
+    context.goods = ['DCE.m1801', 'DCE.m1805']
+    # 订阅品种数据
+    subscribe(symbols = context.goods,frequency = '1d',count = 31,wait_group = True)
+def on_bar(context, bars):
+    # 获取历史数据
+    close_1801 = context.data(symbol=context.goods[0], frequency='1d', count=31, fields='close')['close'].values
+    close_1805 = context.data(symbol=context.goods[1], frequency='1d', count=31, fields='close')['close'].values
+    # 计算上下轨
+    spread = close_1801[:-2] - close_1805[:-2]
+    spread_new = close_1801[-1] - close_1805[-1]
+    up = np.mean(spread) + 0.75 * np.std(spread)
+    down = np.mean(spread) - 0.75 * np.std(spread)
+    up_stop = np.mean(spread) + 2 * np.std(spread)
+    down_stop = np.mean(spread) - 2 * np.std(spread)
+    # 获取仓位
+    position1801_long = context.account().position(symbol = context.goods[0],side =PositionSide_Long)
+    position1801_short = context.account().position(symbol = context.goods[0],side =PositionSide_Short)
+    # 没有仓位时
+    if not position1801_short and not position1801_long:
+        # 上穿上轨时，买近卖远
+        if spread_new > up:
+            order_volume(symbol=context.goods[0], volume=1, order_type=OrderType_Market, side=OrderSide_Buy, position_effect=PositionEffect_Open)
+            order_volume(symbol=context.goods[1], volume=1, order_type=OrderType_Market, side=OrderSide_Sell, position_effect=PositionEffect_Open)
+            print('上穿上轨，买近卖远')
+        # 下穿下轨时，卖近买远
+        if spread_new < down:
+            order_volume(symbol=context.goods[0], volume=1, order_type=OrderType_Market, side=OrderSide_Sell, position_effect=PositionEffect_Open)
+            order_volume(symbol=context.goods[1], volume=1, order_type=OrderType_Market, side=OrderSide_Buy, position_effect=PositionEffect_Open)
+            print('下穿下轨，卖近买远')
+    # 价差回归到上轨时，平仓
+    if position1801_long:
+        if spread_new <= np.mean(spread):
+            order_close_all()
+            print('价差回归，平仓')
+        if spread_new > up_stop:
+            order_close_all()
+            print('达到止损点，全部平仓')
+    # 价差回归到下轨时，平仓
+    if position1801_short:
+        if spread_new >= np.mean(spread):
+            order_close_all()
+            print('价差回归，平全部仓')
+        if spread_new < down_stop:
+            order_close_all()
+            print('达到止损点，全部平仓')
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 08:00:00',
+        backtest_end_time='2017-12-31 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=2000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 200 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_1644952d059612a1.png)
+
+回测期累计收益率-8.12%，年化收益率为-16.46%。最大回撤率为 11.48%，胜率为 50.00%。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 13. 日内回转交易（股票）
+
+**1.策略介绍**
+
+日内回转交易，顾名思义就是在一天内完成“买”和“卖”两个相反方向的操作（可一次也可多次），也就是“T+0”交易。
+
+日内回转可用于股票和期货。其中期货采用“T+0”交易制度，可以直接进行日内回转交易。由于 A 股采用的是“T+1”交易制度，无法直接进行日内回转交易，需要先配置一定的底仓再进行回转交易。
+
+**怎样对股票进行日内回转交易？**
+
+首先，在正式交易的前一个交易日配置一定的底仓。以 500 股为例，记做 total = 500。
+
+然后开始正式的日内回转交易。
+
+配置底仓的作用是利用替代法实现“T+0”。由于当天买入的股票当天不能卖出，但底仓是可以卖出的，用底仓替代新买入的股票进行卖出操作。假设在第二个交易日发生了 1 次买入，5 次卖出交易，每次交易买卖数量为 100 股。利用 turnaround = [0,0]变量记录每次交易的数量，也是当天收盘时需要回转的记录。其中第一个数据表示当日买入数量，第二个数据表示当日卖出数量。下表为单个交易日的买卖信号。
+
+| 信号方向 | 数量 | 交易记录  | 剩余可回转的数量 | 总仓位 |
+| :------: | :--: | :-------: | :--------------: | :----: |
+|    买    | 100  |  [100,0]  |       500        |  600   |
+|    卖    | 100  | [100,100] |       400        |  500   |
+|    卖    | 100  | [100,200] |       300        |  400   |
+|    卖    | 100  | [100,300] |       200        |  300   |
+|    卖    | 100  | [100,400] |       100        |  200   |
+
+**假设在表的最后再加一个卖出信号是否可行？**
+
+答案是**不可行**。
+
+因为如果
+
+```
+
+```
+
+再加一个卖出信号，需要回转的股票数量变为[100,500]，即开多 100 股，开空 500 股。这就意味着在当天收盘之前，需要卖出 100 股，再买入 500 股进行回转。这个交易日内已经出现 5 次卖出信号，底仓的 500 股已经全部卖出，仅有 100 股今日买入的仓位，这部分股票是不能当日卖出的。所以，不能再添加卖出信号。
+
+因此，在判断买入或卖出信号是否能执行时，隐含一个判断条件。即：
+
+**每次交易的数量 + 当日买入的数量（turnaround 的第一位）< 底仓数量（以卖出信号为例）**。
+
+**2.策略逻辑**
+
+第一步：设置变量
+context.first:底仓配置信号，0 表示未配置底仓；1 表示配置底仓。
+context.trade_n:每次交易数量。
+context.day:用来获取前一交易日的时间和最新交易日的时间，第一位是最新交易日，第二位是前一交易日。当二者不同时，意味着新的一天，需要初始化其他变量。
+context.ending：开始回转信号，0 表示未触发；1 表示已触发。
+context.turnaround：当日买卖股票操作记录，也是回转记录。第一位代表买入股数，第二位代表卖出股数。
+
+第二步：计算 MACD 指标，设计交易信号
+当 MACD 小于 0 时，买入对应股票 100 手；
+当 MACD 大于 0 时，卖出对应股票 100 手;
+
+第三步：接近收盘时，全部回转
+
+回测标的：SHSE.600000
+
+回测期：2017-09-01 8:00:00 到 2017-10-01 16:00:00
+
+回测初始资金：200 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import sys
+try:
+    import talib
+except:
+    print('请安装TA-Lib库')
+    # 安装talib请看文档https://www.myquant.cn/docs/gm3_faq/154?
+    sys.exit(-1)
+from gm.api import *
+def init(context):
+    # 设置标的股票
+    context.symbol = 'SHSE.600000'
+    # 用于判定第一个仓位是否成功开仓
+    context.first = 0
+    # 订阅浦发银行, bar频率为1min
+    subscribe(symbols=context.symbol, frequency='60s', count=35)
+    # 日内回转每次交易100股
+    context.trade_n = 100
+    # 获取昨今天的时间
+    context.day = [0, 0]
+    # 用于判断是否到达接近收盘，所以不再交易
+    context.ending = 1
+def on_bar(context, bars):
+    bar = bars[0]
+    # 配置底仓
+    if context.first == 0:
+        # 需要保持的总仓位
+        context.total = 10000
+        # 购买10000股浦发银行股票
+        order_volume(symbol=context.symbol, volume=context.total, side=OrderSide_Buy,
+                     order_type=OrderType_Market, position_effect=PositionEffect_Open)
+        print(context.symbol, '以市价单开多仓10000股')
+        context.first = 1.
+        day = bar.bob.strftime('%Y-%m-%d')
+        context.day[-1] = int(day[-2:])
+        # 每天的仓位操作
+        context.turnaround = [0, 0]
+        return
+    # 更新最新的日期
+    day = bar.bob.strftime('%Y-%m-%d %H:%M:%S')
+    context.day[0] = bar.bob.day
+    # 若为新的一天,获取可用于回转的昨仓
+    if context.day[0] != context.day[-1]:
+        context.ending = 0
+        context.turnaround = [0, 0]
+    # 如果接近收盘，则不再交易
+    if context.ending == 1:
+        return
+    # 若有可用的昨仓则操作
+    if context.total >= 0:
+        # 获取时间序列数据
+        symbol = bar['symbol']
+        recent_data = context.data(symbol=symbol, frequency='60s', count=35, fields='close')
+        # 计算MACD线
+        macd = talib.MACD(recent_data['close'].values)[0][-1]
+        # 根据MACD>0则开仓,小于0则平仓
+        if macd > 0:
+            # 多空单向操作都不能超过昨仓位,否则最后无法调回原仓位
+            if context.turnaround[0] + context.trade_n < context.total:
+                # 计算累计仓位
+                context.turnaround[0] += context.trade_n
+                order_volume(symbol=context.symbol, volume=context.trade_n, side=OrderSide_Buy,
+                             order_type=OrderType_Market, position_effect=PositionEffect_Open)
+                print(symbol, '市价单开多仓', context.trade_n, '股')
+        elif macd < 0:
+            if context.turnaround[1] + context.trade_n < context.total:
+                context.turnaround[1] += context.trade_n
+                order_volume(symbol=context.symbol, volume=context.trade_n, side=OrderSide_Sell,
+                             order_type=OrderType_Market, position_effect=PositionEffect_Close)
+                print(symbol, '市价单开空仓', context.trade_n, '股')
+        # 临近收盘时若仓位数不等于昨仓则回转所有仓位
+        if day[11:16] == '14:55' or day[11:16] == '14:57':
+            position = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+            if position['volume'] != context.total:
+                order_target_volume(symbol=context.symbol, volume=context.total, order_type=OrderType_Market,
+                                    position_side=PositionSide_Long)
+                print('市价单回转仓位操作...')
+                context.ending = 1
+        # 更新过去的日期数据
+        context.day[-1] = context.day[0]
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-09-01 08:00:00',
+        backtest_end_time='2017-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=2000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 200 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+![img](https://www.myquant.cn/uploads/202010/attach_1643064dd50f2fa3.png)
+
+回测期累计收益率为-0.04%，年化收益率为-0.46%，沪深 300 收益率为 0.16%，整体跑输指数。最大回撤为 0.23%，胜率为 40.07%。
+
+为了检验策略的稳健性，改变回测期，得到回测结果如下表所示。
+
+|    指标    | 2020.5 | 2020.6 | 2020.7 | 2020.8 | 2020.9 | 2020.10 |
+| :--------: | :----: | :----: | :----: | :----: | :----: | :-----: |
+| 年化收益率 | 0.48%  | -1.68% | 5.34%  | -1.41% | -6.51% | -0.58%  |
+|  最大回撤  | 0.15%  | 0.21%  | 0.52%  | 0.30%  | 0.52%  |  0.21%  |
+|    胜率    | 51.36% | 40.38% | 41.38% | 31.04% | 10.10% | 51.33%  |
+
+可以看出，日内回转交易的最大回撤都维持在较低水平。同时，胜率和年化收益率也相对偏低。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 14. 做市商交易（期货）
+
+**1.策略介绍**
+
+做市商制度是一种报价驱动制度。做市商根据自己的判断，不断地报出买入报价和卖出报价，以自有资金与投资者进行交易。做市商获取的收益就是买入价和卖出价的价差。
+
+假设做市商以 6344 卖出一手合约，同时以 6333 买入一手合约。如果都成交，做市商可净获利 11 个点。但如果当时合约价格持续走高或走低，做市商没有对手方能够成交，这时就不得不提高自己的买价或降低自己的卖价进行交易，做市商就会亏损。因此，做市商并不是稳赚不赔的。
+
+**2.策略逻辑**
+
+第一步：订阅 tick 数据（只有最近 3 个月数据）
+
+第二步：获取 tick 数据中的卖一和买一价格。
+
+第三步：以买一价格开多，以卖一价格开空。以卖一价格平多，以买一价格平空。
+
+回测标的：CZCE.CF801
+
+回测时间： 2017-09-29 11:25:00 至 2017-09-29 11:30:00
+
+回测初始资金：50 万
+
+###### 注意：若修改回测期，需要修改对应的回测标的。
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+from gm.api import *
+'''
+本策略通过不断对CZCE.CF801进行:
+买(卖)一价现价单开多(空)仓和卖(买)一价平多(空)仓来做市
+并以此赚取差价
+回测数据为:CZCE.CF801的tick数据
+回测时间为:2017-09-29 11:25:00到2017-09-29 11:30:00
+需要特别注意的是:本平台对于回测对限价单固定完全成交,本例子 仅供参考.
+敬请通过适当调整回测参数
+1.backtest_commission_ratio回测佣金比例
+2.backtest_slippage_ratio回测滑点比例
+3.backtest_transaction_ratio回测成交比例
+以及优化策略逻辑来达到更贴近实际的回测效果
+目前只支持最近三个月的tick数据，回测时间和标的需要修改
+'''
+def init(context):
+    # 订阅CZCE.CF801的tick数据
+    context.symbol = 'CZCE.CF801'
+    subscribe(symbols=context.symbol, frequency='tick')
+def on_tick(context, tick):
+    quotes = tick['quotes'][0]
+    # 获取持有的多仓
+    position_long = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+    # 获取持有的空仓
+    position_short = context.account().position(symbol=context.symbol, side=PositionSide_Short)
+    # 没有仓位则双向开限价单
+    # 若有仓位则限价单平仓
+    if not position_long:
+        # 获取买一价
+        price = quotes['bid_p']
+        print('买一价为: ', price)
+        order_target_volume(symbol=context.symbol, volume=1, price=price, order_type=OrderType_Limit,
+                            position_side=PositionSide_Long)
+        print('CZCE.CF801开限价单多仓1手')
+    else:
+        # 获取卖一价
+        price = quotes['ask_p']
+        print('卖一价为: ', price)
+        order_target_volume(symbol=context.symbol, volume=0, price=price, order_type=OrderType_Limit,
+                            position_side=PositionSide_Long)
+        print('CZCE.CF801平限价单多仓1手')
+    if not position_short:
+        # 获取卖一价
+        price = quotes['ask_p']
+        print('卖一价为: ', price)
+        order_target_volume(symbol=context.symbol, volume=1, price=price, order_type=OrderType_Limit,
+                            position_side=PositionSide_Short)
+        print('CZCE.CF801卖一价开限价单空仓')
+    else:
+        # 获取买一价
+        price = quotes['bid_p']
+        print('买一价为: ', price)
+        order_target_volume(symbol=context.symbol, volume=0, price=price, order_type=OrderType_Limit,
+                            position_side=PositionSide_Short)
+        print('CZCE.CF801买一价平限价单空仓')
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    backtest_transaction_ratio回测成交比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-09-29 11:25:00',
+        backtest_end_time='2017-09-29 11:30:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=500000,
+        backtest_commission_ratio=0.00006,
+        backtest_slippage_ratio=0.0001,
+        backtest_transaction_ratio=0.5)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 50 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_1644da41c74c94ee.png)
+
+回测期累计收益率为 0.05%，年化收益率为 16.87%，基准收益率为 0，整体收益跑赢指数。最大回撤为 0，胜率 97.14%。
+
+需要注意的是，本演示策略只是用作示例，在现实中，以买一和卖一挂单不一定会成交，实际收益率也达不到示例水平，需谨慎。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 15. 海龟交易法（期货）
+
+**1.策略介绍**
+
+海龟交易思想起源于上世纪八十年代的美国。理查德丹尼斯与好友比尔打赌，主题是一个成功的交易员是天生的还是后天的。理查德用十年时间证明了通过日常系统培训，交易员可以通过后天培训成为一名优秀的交易者。这套培训系统就是海龟交易系统。
+
+海龟交易系统是一个完整的、机械的交易思想，可以系统地完成整个交易过程。它包括了买卖什么、头寸规模、何时买卖、何时退出等一系列交易策略，是一个趋势交易策略。它最显著的特点是捕捉中长期趋势，力求在短期内获得最大的收益。
+
+**2.策略逻辑**
+
+第一步：获取历史数据，计算唐奇安通道和 ATR
+
+第二步：当突破唐奇安通道时，开仓。
+
+第三步：计算加仓和止损信号。
+
+回测标的：DCE.i2012
+
+回测时间：2020-02-15 至 2020-09-01
+
+回测初始资金：100 万
+
+> ATR 值是不断变化的，这就会导致在对期货平仓时，可能出现平仓数量 > 持仓数量的现象。比如前一交易日的持仓为 10，今日的 ATR 值为 22.假设当前价格触发平仓条件，平仓 1/2*ATR。1/2*ATR=11 > 10, 这样就会导致委托失败报错。所以要加入一个变量 volume_hold 用来记录当前持仓量，与 1/2\*ATR 作比较。
+
+**注意：若修改回测期，需要修改对应的回测标的。**
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+import pandas as pd
+from gm.api import *
+'''
+以短期为例：20日线
+第一步：获取历史数据，计算唐奇安通道和ATR
+第二步：当突破唐奇安通道时，开仓。
+第三步：计算加仓和止损信号。
+'''
+def init(context):
+    # 设置计算唐奇安通道的参数
+    context.n = 20
+    # 设置合约标的
+    context.symbol = 'DCE.i2012'
+    # 设置交易最大资金比率
+    context.ratio = 0.8
+    # 订阅数据
+    subscribe(symbols=context.symbol, frequency='60s', count=2)
+    # 获取当前时间
+    time = context.now.strftime('%H:%M:%S')
+    # 如果策略执行时间点是交易时间段，则直接执行algo定义atr等参数，以防直接进入on_bar()导致atr等未定义
+    if '09:00:00' < time < '15:00:00' or '21:00:00' < time < '23:00:00':
+        algo(context)
+    # 如果是交易时间段，等到开盘时间确保进入algo()
+    schedule(schedule_func=algo, date_rule='1d', time_rule='09:00:00')
+    schedule(schedule_func=algo, date_rule='1d', time_rule='21:00:00')
+def algo(context):
+    # 计算通道的数据:当日最低、最高、上一交易日收盘
+    # 注：由于talib库计算ATR的结果与公式求得的结果不符，所以这里利用公式计算ATR
+    # 如果是回测模式,当天的数据直接用history取到
+    if context.mode == 2:
+        data = history_n(symbol=context.symbol, frequency='1d', count=context.n+1, end_time=context.now, fields='close,high,low,bob', df=True) # 计算ATR
+        tr_list = []
+        for i in range(0, len(data)-1):
+            tr = max((data['high'].iloc[i] - data['low'].iloc[i]), data['close'].shift(-1).iloc[i] - data['high'].iloc[i],
+                     data['close'].shift(-1).iloc[i] - data['low'].iloc[i])
+            tr_list.append(tr)
+        context.atr = int(np.floor(np.mean(tr_list)))
+        context.atr_half = int(np.floor(0.5 * context.atr))
+        # 计算唐奇安通道
+        context.don_open = np.max(data['high'].values[-context.n:])
+        context.don_close = np.min(data['low'].values[-context.n:])
+    # 如果是实时模式，当天的数据需要用current取到
+    if context.mode == 1:
+        data = history_n(symbol=context.symbol, frequency='1d', count=context.n, end_time=context.now, fields='close,high,low',
+                         df=True)  # 计算ATR
+        current_data = current(symbols=context.symbol)   # 最新一个交易日的最高、最低
+        tr_list = []
+        for i in range(1, len(data)):
+            tr = max((data['high'].iloc[i] - data['low'].iloc[i]),
+                     data['close'].shift(-1).iloc[i] - data['high'].iloc[i],
+                     data['close'].shift(-1).iloc[i] - data['low'].iloc[i])
+            tr_list.append(tr)
+        # 把最新一期tr加入列表中
+        tr_new = max((current_data[0]['high'] - current_data[0]['low']),
+                     data['close'].iloc[-1] - current_data[0]['high'],
+                     data['close'].iloc[-1] - current_data[0]['low'])
+        tr_list.append(tr_new)
+        context.atr = int(np.floor(np.mean(tr_list)))
+        context.atr_half = int(np.floor(0.5 * context.atr))
+        # 计算唐奇安通道
+        context.don_open = np.max(data['high'].values[-context.n:])
+        context.don_close = np.min(data['low'].values[-context.n:])
+    # 计算加仓点和止损点
+    context.long_add_point = context.don_open + context.atr_half
+    context.long_stop_loss = context.don_open - context.atr_half
+    context.short_add_point = context.don_close - context.atr_half
+    context.short_stop_loss = context.don_close + context.atr_half
+def on_bar(context, bars):
+    # 提取数据
+    symbol = bars[0]['symbol']
+    recent_data = context.data(symbol=context.symbol, frequency='60s', count=2, fields='close,high,low')
+    close = recent_data['close'].values[-1]
+    # 账户仓位情况
+    position_long = context.account().position(symbol=symbol, side=PositionSide_Long)
+    position_short = context.account().position(symbol=symbol, side=PositionSide_Short)
+    # 当无持仓时
+    if not position_long and not position_short:
+        # 如果向上突破唐奇安通道，则开多
+        if close > context.don_open:
+            order_volume(symbol=symbol, side=OrderSide_Buy, volume=context.atr, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('开多仓atr')
+        # 如果向下突破唐奇安通道，则开空
+        if close < context.don_close:
+            order_volume(symbol=symbol, side=OrderSide_Sell, volume=context.atr, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('开空仓atr')
+    # 有持仓时
+    # 持多仓，继续突破（加仓）
+    if position_long:
+        # 当突破1/2atr时加仓
+        if close > context.long_add_point:
+            order_volume(symbol=symbol, volume=context.atr_half, side=OrderSide_Buy, order_type=OrderType_Market,position_effect=PositionEffect_Open)
+            print('继续加仓0.5atr')
+            context.long_add_point += context.atr_half
+            context.long_stop_loss += context.atr_half
+        # 持多仓，止损位计算
+        if close < context.long_stop_loss:
+            volume_hold = position_long['volume']
+            if volume_hold >= context.atr_half:
+                order_volume(symbol=symbol, volume=context.atr_half, side=OrderSide_Sell, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            else:
+                order_volume(symbol=symbol, volume=volume_hold, side=OrderSide_Sell, order_type=OrderType_Market,position_effect=PositionEffect_Close)
+            print('平多仓0.5atr')
+            context.long_add_point -= context.atr_half
+            context.long_stop_loss -= context.atr_half
+    # 持空仓，继续突破（加仓）
+    if position_short:
+        # 当跌破加仓点时加仓
+        if close < context.short_add_point:
+            order_volume(symbol = symbol, volume=context.atr_half, side=OrderSide_Sell, order_type=OrderType_Market, position_effect=PositionEffect_Open)
+            print('继续加仓0.5atr')
+            context.short_add_point -= context.atr_half
+            context.short_stop_loss -= context.atr_half
+        # 持多仓，止损位计算
+        if close > context.short_stop_loss:
+            volume_hold = position_short['volume']
+            if volume_hold >= context.atr_half:
+                order_volume(symbol=symbol, volume=context.atr_half, side=OrderSide_Buy, order_type=OrderType_Market, position_effect=PositionEffect_Close)
+            else:
+                order_volume(symbol=symbol, volume=volume_hold, side=OrderSide_Buy, order_type=OrderType_Market,position_effect=PositionEffect_Close)
+            print('平空仓0.5atr')
+            context.short_add_point += context.atr_half
+            context.short_stop_loss += context.atr_half
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token',
+        backtest_start_time='2020-02-15 09:15:00',
+        backtest_end_time='2020-09-01 15:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=1000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 100 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202102/attach_1666080fb5164ba3.png)
+
+回测期累计收益率为 18.75%，年化收益率为 6.42%，沪深 300 收益率为 18.75%，策略跑输沪深 300 指数。最大回撤为 4.20%，胜率为 48.15%。
+
+为了检验策略的稳健性，改变策略标的和计算唐奇安通道的参数 n，回测结果如下。
+
+| 标的        | 唐奇安通道参数 | 年化收益率 | 最大回撤 |
+| :---------- | :------------: | :--------: | -------: |
+| DCE.i2012   |       20       |   6.42%    |    4.20% |
+| DCE.i2012   |       25       |   3.45%    |    4.99% |
+| DCE.i2012   |       30       |   -0.35%   |    4.23% |
+| DCE.m2012   |       20       |   -0.28%   |    1.50% |
+| DCE.m2012   |       25       |   1.19%    |    0.52% |
+| DCE.m2012   |       30       |   1.23%    |    0.47% |
+| SHFE.rb2012 |       20       |   -4.48%   |    2.61% |
+| SHFE.rb2012 |       25       |   -2.80%   |    2.84% |
+| SHFE.rb2012 |       30       |   -3.01%   |    2.39% |
+
+由上表可知，不同标的收益结果呈现差异。其中大商所的铁矿石收益情况最好，其他两个品种收益较差，整体收益情况较差。说明该策略在使用上存在一定风险。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 16. 行业轮动（股票）
+
+**1.策略介绍**
+
+行业轮动策略是根据行业轮动现象做成的策略，利用行业趋势进行获利的方法，属于主动交易策略。其本质是通过一段时期的市场表现，力求抓住表现较好的行业以及投资品种，选择不同时期的强势行业进行获利。
+
+**策略设计**
+
+**行业动量策略**
+
+部分研究表明，行业在日、月频率上会存在动量现象，在周频率上会存在反转现象，也就是行业间轮动。因此，在日和月频率上可以利用行业动量设计策略，如果是在周频率上可以利用反转效应设计策略。
+（引自：武文超. 中国 A 股市场的行业轮动现象分析——基于动量和反转交易策略的检验[J]. 金融理论与实践, 2014, 000(009):111-114.）
+
+**行业因子策略**
+
+将行业变量作为一个因子放入多因子模型中，利用多因子模型预测各个行业的周期收益率，采用滚动预测方法每次得到一个样本外预测值，根据这些预测值判断该买入哪些行业，卖出哪些行业。
+（引自：高波, 任若恩. 基于主成分回归模型的行业轮动策略及其业绩评价[J]. 数学的实践与认识, 2016, 46(019):82-92.）
+
+**2.策略逻辑**
+
+> 我们采用行业动量设计策略。为了提高策略速度，以 6 个行业为例进行演示。
+
+第一步：确定行业指数，获取行业指数收益率。
+
+第二步：根据行业动量获取最佳行业指数。
+
+第三步：在最佳行业中，选择最大市值的 5 支股票买入。
+
+回测时间：2017-07-01 08:00:00 到 2017-10-01 16:00:00
+
+回测标的：SHSE.000910.SHSE.000909.SHSE.000911.SHSE.000912.SHSE.000913.SHSE.000914
+(300 工业.300 材料.300 可选.300 消费.300 医药.300 金融)
+
+回测初始资金：1000 万
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+import numpy as np
+from gm.api import *
+'''
+本策略每隔1个月定时触发计算SHSE.000910.SHSE.000909.SHSE.000911.SHSE.000912.SHSE.000913.SHSE.000914
+(300工业.300材料.300可选.300消费.300医药.300金融)这几个行业指数过去
+20个交易日的收益率并选取了收益率最高的指数的成份股获取并获取了他们的市值数据
+随后把仓位调整至市值最大的5只股票上
+回测数据为:SHSE.000910.SHSE.000909.SHSE.000911.SHSE.000912.SHSE.000913.SHSE.000914和他们的成份股
+回测时间为:2017-07-01 08:00:00到2017-10-01 16:00:00
+'''
+def init(context):
+    # 每月第一个交易日的09:40 定时执行algo任务（仿真和实盘时不支持该频率）
+    schedule(schedule_func=algo, date_rule='1m', time_rule='09:40:00')
+    # 用于筛选的行业指数
+    context.index = ['SHSE.000910', 'SHSE.000909', 'SHSE.000911', 'SHSE.000912', 'SHSE.000913', 'SHSE.000914']
+    # 用于统计数据的天数
+    context.date = 20
+    # 最大下单资金比例
+    context.ratio = 0.8
+def algo(context):
+    # 获取当天的日期
+    today = context.now
+    # 获取上一个交易日
+    last_day = get_previous_trading_date(exchange='SHSE', date=today)
+    return_index = []
+    # 获取并计算行业指数收益率
+    for i in context.index:
+        return_index_his = history_n(symbol=i, frequency='1d', count=context.date, fields='close,bob',
+                                     fill_missing='Last', adjust=ADJUST_PREV, end_time=last_day, df=True)
+        return_index_his = return_index_his['close'].values
+        return_index.append(return_index_his[-1] / return_index_his[0] - 1)
+    # 获取指定数内收益率表现最好的行业
+    sector = context.index[np.argmax(return_index)]
+    print('最佳行业指数是: ', sector)
+    # 获取最佳行业指数成份股
+    symbols = get_history_constituents(index=sector, start_date=last_day, end_date=last_day)[0]['constituents'].keys()
+    # 获取当天有交易的股票
+    not_suspended_info = get_history_instruments(symbols=symbols, start_date=today, end_date=today)
+    not_suspended_symbols = [item['symbol'] for item in not_suspended_info if not item['is_suspended']]
+    # 获取最佳行业指数成份股的市值，从大到小排序并选取市值最大的5只股票
+    fin = get_fundamentals(table='trading_derivative_indicator', symbols=not_suspended_symbols, start_date=last_day,
+                           end_date=last_day, limit=5, fields='NEGOTIABLEMV', order_by='-NEGOTIABLEMV', df=True)
+    fin.index = fin['symbol']
+    # 计算权重
+    percent = 1.0 / len(fin.index) * context.ratio
+    # 获取当前所有仓位
+    positions = context.account().positions()
+    # 如标的池有仓位,平不在标的池的仓位
+    for position in positions:
+        symbol = position['symbol']
+        if symbol not in fin.index:
+            order_target_percent(symbol=symbol, percent=0, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print('市价单平不在标的池的', symbol)
+    # 对标的池进行操作
+    for symbol in fin.index:
+        order_target_percent(symbol=symbol, percent=percent, order_type=OrderType_Market,
+                             position_side=PositionSide_Long)
+        print(symbol, '以市价单调整至仓位', percent)
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 08:00:00',
+        backtest_end_time='2017-10-01 16:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202011/attach_164605e0366840a0.png)
+
+回测期累计收益率为 10.10%，年化收益率为 41.43%，沪深 300 收益率为 5.09%，策略收益跑赢指数。最大回撤为 6.93%，胜率 50%。
+
+为了探究策略的稳健性，改变回测时间，观察策略收益情况。
+
+|       回测期        | 时间长度 | 年化收益率 | 最大回撤 |
+| :-----------------: | :------: | :--------: | :------: |
+| 2017.7.1-2017.10.1  |  4 个月  |   41.43%   |  6.93%   |
+| 2018.7.1-2018.10.1  |  4 个月  |  -23.40%   |  15.54%  |
+| 2019.7.1-2019.10.1  |  4 个月  |   9.98%    |  9.58%   |
+| 2019.1.1-2019.12.31 | 12 个月  |   63.82%   |  9.98%   |
+| 2018.1.1-2019.12.31 | 24 个月  |   7.63%    |  36.89%  |
+| 2017.1.1-2019.12.31 | 36 个月  |   22.11%   |  36.94%  |
+
+通过观察回测结果发现，该策略在选择的回测期内除了 2018 年 7 月 1 日至 2018 年 10 月 1 日这段期间是负收益以外，在其他回测期内都是正收益。其中 2017 年 7 月至 2017 年 10 月和 2019 年 1 月至 2019 年 12 月这两段期间的年化收益率最高，其他时间段收益率相对较低，说明该策略在不同回测期之间收益差距较大。随着时间跨度拉长，最大回撤越来越大，最大可达到 36.94%。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
+
+---
+
+## 17. 机器学习（股票）
+
+**1.策略介绍**
+
+**什么是机器学习？**
+
+随着计算机技术的发展，投资者不再只局限于传统投资策略，机器学习在资本市场得到广泛应用。机器学习的核心是通过机器模仿人类的思考过程以及思维习惯，通过对现有数据的学习，对问题进行预测和决策。目前，机器学习已在人脸识别、智能投顾、自然语言处理等方面得到广泛应用。
+
+机器学习可以分为两类，一类是无监督学习，另一类是监督学习。监督学习是指按照已有的标记进行学习，即已经有准确的分类信息。比如二分类问题，一类是“好”，另一类是“不好”，这种明确地指出分类基准的问题。这类模型包括：神经网络、决策树、支持向量机等。
+
+无监督学习是指针对未标记过的数据集进行学习。比如聚类问题，没有准确的标准说明应该聚成几类，只有相对概念。这类模型包括：K_means 聚类、层次聚类法等。
+
+**什么是支持向量机？**
+
+支持向量机是最典型的一类机器学习模型，常用于解决二分类问题。支持向量机的原理是在一个样本空间内，找到一个平面，将样本数据分为两个部分，即两个分类，这个平面就叫做超平面。
+
+**怎样确定超平面？**
+
+假设有一个线性可分的二分类问题如图所示。
+![img](https://www.myquant.cn/uploads/202011/attach_16461d0521da1346.png)
+
+已知 A、B、C 三条线均可以将样本空间分为两类，那么问题来了，应该选择哪一个？
+
+SVM 模型指出，如果超平面能够将训练样本没有错误地分开，并且两类训练样本中离超平面最近的样本与超平面之间的距离是最大的，则把这个超平面称作最优超平面，即上图中的 B 平面。两类样本中距离最优超平面的点成为支持向量，支持向量机模型的名字由此得出。
+![img](https://www.myquant.cn/uploads/202011/attach_16461d0732d39ead.png)
+
+支持向量机背后的数学原理十分优美，但由于推导过程过于复杂，这里不再赘述。总之，支持向量机的核心就是寻找最优超平面。
+
+支持向量机不仅可以解决线性可分问题，也可以解决非线性可分问题。其核心思想是将原始样本点映射到高维空间上，将非线性转化为线性可分，在高维空间中找到满足条件的最优超平面，再映射到低维空间中。
+
+**利用支持向量机预测股票涨跌**
+
+在利用支持向量机进行预测之前，先将数据集分为训练集和测试集。常用的分类方法是将数据及进行 8:2 分解，0.8 部分是训练集，0.2 部分是测试集。用训练集训练模型，再用测试集评价模型的准确率等指标。
+
+在利用支持向量机预测时，还有很重要的一步是进行参数优化。SVM 的参数包括以下几个。
+
+| 参数符号 | 参数说明                                                                                                                                                                             |
+| :------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|    C     | 罚函数，错误项的惩罚系数，默认为 1。C 越大，对错误样本的惩罚力度越大，准确度越高但泛化能力越低（泛化能力是指拓展到测试集中的准确率）。C 越小，允许样本增加一点错误，使泛化能力提高。 |
+|  Kernel  | 核函数，包括 linear(线型核函数)、poly(多项式核函数)、rbf(高斯核函数)、sigmod(sigmod 核函数)。                                                                                        |
+|  degree  | 当核函数选成多项式核函数时对应的阶数。                                                                                                                                               |
+|  Gamma   | 核函数系数。                                                                                                                                                                         |
+
+还有一些其他的参数，因为本示例不对其进行优化，所以这里不再赘述了。
+
+**参数优化**
+
+本示例采用网格搜索算法优化参数，训练好的参数为 C = 0.6, gamma = 0.001,训练后的准确率为 0.50。（这个准确率虽然看起来很低，但在现实生活中准确率都处于较低水平，这里暂时用这个优化后的参数进行建模。）
+
+**2.策略逻辑**
+
+第一步：获取原始数据，这里获取 2016-04-01 到 2017-07-30 的数据。
+
+第二步：计算 SVM 模型的输入变量。
+
+**x 表示输入的特征值，共 7 个，分别为：**
+
+| 参数符号 | 计算方法                   |
+| :------- | :------------------------- |
+| x1       | 最新收盘价/15 日收盘价均值 |
+| x2       | 现量/15 日均量             |
+| x3       | 最新最高价/15 日均价       |
+| x4       | 最新最低价/15 日均价       |
+| x5       | 现量                       |
+| x6       | 15 日区间收益率            |
+| x7       | 15 日区间标准差            |
+
+**y 表示 5 个交易日后收盘价是否上涨，**
+
+| 参数符号 | 含义         |
+| :------- | :----------- |
+| y = 1    | 表示股价上涨 |
+| y = 0    | 表示股价下跌 |
+
+第三步：利用训练好的模型预测股价未来走向。若上涨(y=1)则开仓。
+
+第四步：设置止损止盈点。
+若已经持有仓位则在盈利大于 10%的时候止盈，在星期五损失大于 2%的时候止损。
+
+回测时间：2017-07-01 09:00:00 到 2017-10-01 09:00:00
+
+回测初始资金：1000 万
+
+回测标的：SHSE.600000
+
+**3.策略代码**
+
+```python
+# coding=utf-8
+from __future__ import print_function, absolute_import, unicode_literals
+from datetime import datetime
+import numpy as np
+from gm.api import *
+import sys
+try:
+    from sklearn import svm
+except:
+    print('请安装scikit-learn库和带mkl的numpy')
+    sys.exit(-1)
+'''
+本策略选取了七个特征变量组成了滑动窗口长度为15天的训练集,随后训练了一个二分类(上涨/下跌)的支持向量机模型.
+若没有仓位则在每个星期一的时候输入标的股票近15个交易日的特征变量进行预测,并在预测结果为上涨的时候购买标的.
+若已经持有仓位则在盈利大于10%的时候止盈,在星期五损失大于2%的时候止损.
+特征变量为:1.收盘价/均值2.现量/均量3.最高价/均价4.最低价/均价5.现量6.区间收益率7.区间标准差
+训练数据为:SHSE.600000浦发银行,时间从2016-04-01到2017-07-30
+回测时间为:2017-07-01 09:00:00到2017-10-01 09:00:00
+'''
+def init(context):
+    # 订阅浦发银行的分钟bar行情
+    context.symbol = 'SHSE.600000'
+    subscribe(symbols=context.symbol, frequency='60s')
+    start_date = '2016-04-01'  # SVM训练起始时间
+    end_date = '2017-07-30'  # SVM训练终止时间
+    # 用于记录工作日
+    # 获取目标股票的daily历史行情
+    recent_data = history(context.symbol, frequency='1d', start_time=start_date, end_time=end_date, fill_missing='last',
+                          df=True)
+    days_value = recent_data['bob'].values
+    days_close = recent_data['close'].values
+    days = []
+    # 获取行情日期列表
+    print('准备数据训练SVM')
+    for i in range(len(days_value)):
+        days.append(str(days_value[i])[0:10])
+    x_all = []
+    y_all = []
+    for index in range(15, (len(days) - 5)):
+        # 计算三星期共15个交易日相关数据
+        start_day = days[index - 15]
+        end_day = days[index]
+        data = history(context.symbol, frequency='1d', start_time=start_day, end_time=end_day, fill_missing='last',
+                       df=True)
+        close = data['close'].values
+        max_x = data['high'].values
+        min_n = data['low'].values
+        amount = data['amount'].values
+        volume = []
+        for i in range(len(close)):
+            volume_temp = amount[i] / close[i]
+            volume.append(volume_temp)
+        close_mean = close[-1] / np.mean(close)  # 收盘价/均值
+        volume_mean = volume[-1] / np.mean(volume)  # 现量/均量
+        max_mean = max_x[-1] / np.mean(max_x)  # 最高价/均价
+        min_mean = min_n[-1] / np.mean(min_n)  # 最低价/均价
+        vol = volume[-1]  # 现量
+        return_now = close[-1] / close[0]  # 区间收益率
+        std = np.std(np.array(close), axis=0)  # 区间标准差
+        # 将计算出的指标添加到训练集X
+        # features用于存放因子
+        features = [close_mean, volume_mean, max_mean, min_mean, vol, return_now, std]
+        x_all.append(features)
+    # 准备算法需要用到的数据
+    for i in range(len(days_close) - 20):
+        if days_close[i + 20] > days_close[i + 15]:
+            label = 1
+        else:
+            label = 0
+        y_all.append(label)
+    x_train = x_all[: -1]
+    y_train = y_all[: -1]
+    # 训练SVM
+    context.clf = svm.SVC(C=0.6, kernel='rbf', gamma=0.001)
+    context.clf.fit(x_train, y_train)
+    print('训练完成!')
+def on_bar(context, bars):
+    bar = bars[0]
+    # 获取当前年月日
+    today = bar.bob.strftime('%Y-%m-%d')
+    # 获取数据并计算相应的因子
+    # 于星期一的09:31:00进行操作
+    # 当前bar的工作日
+    weekday = datetime.strptime(today, '%Y-%m-%d').isoweekday()
+    # 获取模型相关的数据
+    # 获取持仓
+    position = context.account().position(symbol=context.symbol, side=PositionSide_Long)
+    # 如果bar是新的星期一且没有仓位则开始预测
+    if not position and weekday == 1:
+        # 获取预测用的历史数据
+        data = history_n(symbol=context.symbol, frequency='1d', end_time=today, count=15,
+                         fill_missing='last', df=True)
+        close = data['close'].values
+        train_max_x = data['high'].values
+        train_min_n = data['low'].values
+        train_amount = data['amount'].values
+        volume = []
+        for i in range(len(close)):
+            volume_temp = train_amount[i] / close[i]
+            volume.append(volume_temp)
+        close_mean = close[-1] / np.mean(close)
+        volume_mean = volume[-1] / np.mean(volume)
+        max_mean = train_max_x[-1] / np.mean(train_max_x)
+        min_mean = train_min_n[-1] / np.mean(train_min_n)
+        vol = volume[-1]
+        return_now = close[-1] / close[0]
+        std = np.std(np.array(close), axis=0)
+        # 得到本次输入模型的因子
+        features = [close_mean, volume_mean, max_mean, min_mean, vol, return_now, std]
+        features = np.array(features).reshape(1, -1)
+        prediction = context.clf.predict(features)[0]
+        # 若预测值为上涨则开仓
+        if prediction == 1:
+            # 获取昨收盘价
+            context.price = close[-1]
+            # 把浦发银行的仓位调至95%
+            order_target_percent(symbol=context.symbol, percent=0.95, order_type=OrderType_Market,
+                                 position_side=PositionSide_Long)
+            print('SHSE.600000以市价单开多仓到仓位0.95')
+    # 当涨幅大于10%,平掉所有仓位止盈
+    elif position and bar.close / context.price >= 1.10:
+        order_close_all()
+        print('SHSE.600000以市价单全平多仓止盈')
+    # 当时间为周五并且跌幅大于2%时,平掉所有仓位止损
+    elif position and bar.close / context.price < 1.02 and weekday == 5:
+        order_close_all()
+        print('SHSE.600000以市价单全平多仓止损')
+if __name__ == '__main__':
+    '''
+    strategy_id策略ID,由系统生成
+    filename文件名,请与本文件名保持一致
+    mode实时模式:MODE_LIVE回测模式:MODE_BACKTEST
+    token绑定计算机的ID,可在系统设置-密钥管理中生成
+    backtest_start_time回测开始时间
+    backtest_end_time回测结束时间
+    backtest_adjust股票复权方式不复权:ADJUST_NONE前复权:ADJUST_PREV后复权:ADJUST_POST
+    backtest_initial_cash回测初始资金
+    backtest_commission_ratio回测佣金比例
+    backtest_slippage_ratio回测滑点比例
+    '''
+    run(strategy_id='strategy_id',
+        filename='main.py',
+        mode=MODE_BACKTEST,
+        token='token_id',
+        backtest_start_time='2017-07-01 09:00:00',
+        backtest_end_time='2017-10-01 09:00:00',
+        backtest_adjust=ADJUST_PREV,
+        backtest_initial_cash=10000000,
+        backtest_commission_ratio=0.0001,
+        backtest_slippage_ratio=0.0001)
+
+```
+
+**4.回测结果与稳健性分析**
+
+设定初始资金 1000 万，手续费率为 0.01%，滑点比率为 0.01%。回测结果如下图所示。
+
+![img](https://www.myquant.cn/uploads/202101/attach_165d7120ffa64d54.png)
+
+回测期累计收益率为 9.30%，年化收益率为 38.13%，沪深 300 指数收益率为 5.09%，策略收益率跑输指数。策略最大回撤为 0.56%，胜率 50.0%。
+
+为了检验策略的稳健性，改变回测时间，得到结果如下。
+
+|        回测期         |  时长   | 年化收益率 | 最大回撤 |
+| :-------------------: | :-----: | :--------: | :------: |
+| 2017.07.01-2017.10.01 | 3 个月  |   38.13%   |  0.56%   |
+| 2017.07.01-2017.12.31 | 6 个月  |   18.85%   |  0.56%   |
+| 2017.07.01-2018.07.01 | 12 个月 |   9.38%    |  0.56%   |
+| 2017.07.01-2019.07.01 | 24 个月 |   2.84%    |  3.07%   |
+| 2017.07.01-2020.07.01 | 36 个月 |   1.89%    |  3.07%   |
+
+由上表可知，策略整体收益均小于 0，远远跑输基准水平。
+
+###### 注：此策略只用于学习、交流、演示，不构成任何投资建议。
