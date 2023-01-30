@@ -10,3 +10,11 @@ Next, 运行开发服务器：
 ```bash
 npm run dev
 ```
+
+
+
+Next, 运行构建生产服务器：
+
+```bash
+npm run build
+```
